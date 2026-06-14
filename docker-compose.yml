@@ -1,0 +1,23 @@
+services:
+  poptonium:
+    build: .
+    container_name: poptonium
+    restart: unless-stopped
+    # Keep the host port at 8085. When the app can't reach the backend through a
+    # reverse proxy (same LAN, no proxy) it falls back to the Plex host on a
+    # hardcoded 8085, so changing this breaks that direct discovery path.
+    ports:
+      - "8085:8085"
+    environment:
+      # Plex is required.
+      - PLEX_URL=${PLEX_URL:-}
+      - PLEX_TOKEN=${PLEX_TOKEN:-}
+      # Everything below is optional.
+      - MDBLIST_API_KEY=${MDBLIST_API_KEY:-}
+      - OVERSEERR_URL=${OVERSEERR_URL:-}
+      - OVERSEERR_API_KEY=${OVERSEERR_API_KEY:-}
+      - OPENSUBTITLES_API_KEY=${OPENSUBTITLES_API_KEY:-}
+      - OPENSUBTITLES_USERNAME=${OPENSUBTITLES_USERNAME:-}
+      - OPENSUBTITLES_PASSWORD=${OPENSUBTITLES_PASSWORD:-}
+    volumes:
+      - ./data:/data

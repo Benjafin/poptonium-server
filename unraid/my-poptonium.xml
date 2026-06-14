@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>poptonium</Name>
+  <Repository>your-registry/poptonium:latest</Repository>
+  <Registry/>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support/>
+  <Project/>
+  <Overview>Companion backend for the Poptonium Plex client. Caches ratings from mdblist, builds the Discover "popular" feed, proxies Overseerr requests, serves user-defined custom Library sections, and can search/download subtitles from OpenSubtitles. Includes a web admin UI at /admin to view caches, scheduled jobs and config, and create/order custom sections. Plex is required; mdblist, Overseerr and OpenSubtitles are optional (leave their variables blank to disable).</Overview>
+  <Category>MediaApp:Video Other:</Category>
+  <WebUI>http://[IP]:[PORT:8085]/admin</WebUI>
+  <TemplateURL/>
+  <Icon/>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="WebUI / API Port" Target="8085" Default="8085" Mode="tcp" Description="Host port for the web admin UI and API. Keep this at 8085: the app falls back to the Plex host on a hardcoded 8085 when no reverse proxy is in front of it." Type="Port" Display="always" Required="true" Mask="false">8085</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/poptonium" Mode="rw" Description="Persistent data: SQLite cache DB and custom sections." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/poptonium</Config>
+  <Config Name="PLEX_URL" Target="PLEX_URL" Default="" Mode="" Description="REQUIRED. Internal Plex URL (e.g. http://plex:32400)." Type="Variable" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="PLEX_TOKEN" Target="PLEX_TOKEN" Default="" Mode="" Description="REQUIRED. Plex server token (X-Plex-Token)." Type="Variable" Display="always" Required="true" Mask="true"></Config>
+  <Config Name="MDBLIST_API_KEY" Target="MDBLIST_API_KEY" Default="" Mode="" Description="Optional. mdblist.com API key: the source for all ratings (IMDb/RT/TMDB/Metacritic/MDbList) plus the Discover feed. Blank disables ratings and the popular feed; the rest still works." Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="OVERSEERR_URL" Target="OVERSEERR_URL" Default="" Mode="" Description="Optional. Overseerr base URL (e.g. http://overseerr:5055) for request/search proxy." Type="Variable" Display="always" Required="false" Mask="false"></Config>
+  <Config Name="OVERSEERR_API_KEY" Target="OVERSEERR_API_KEY" Default="" Mode="" Description="Optional. Overseerr API key. Blank disables the Overseerr proxy." Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="OPENSUBTITLES_API_KEY" Target="OPENSUBTITLES_API_KEY" Default="" Mode="" Description="Optional. OpenSubtitles app API key (opensubtitles.com, Profile, API Consumers). Required for online subtitle search/download." Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="OPENSUBTITLES_USERNAME" Target="OPENSUBTITLES_USERNAME" Default="" Mode="" Description="Optional. OpenSubtitles account username; its daily download quota (20/day free) is used for downloads." Type="Variable" Display="always" Required="false" Mask="false"></Config>
+  <Config Name="OPENSUBTITLES_PASSWORD" Target="OPENSUBTITLES_PASSWORD" Default="" Mode="" Description="Optional. OpenSubtitles account password." Type="Variable" Display="always" Required="false" Mask="true"></Config>
+</Container>

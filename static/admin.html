@@ -1,0 +1,2349 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="daylight">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Poptonium · admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   Poptonium admin redesign
+   Themed on the Poptonium app tokens (Aurora / Daylight / Vivid).
+   One [data-theme] switch reskins the whole panel.
+   ============================================================ */
+
+:root {
+  /* defaults overwritten by [data-theme] */
+  --bg:#F4F2EC; --bg2:#FFFFFF; --bg3:#EAE6DC; --elev:#FFFFFF;
+  --line:rgba(28,24,16,.10); --line2:rgba(28,24,16,.18);
+  --text:#1A1712; --dim:rgba(26,23,18,.56); --faint:rgba(26,23,18,.34);
+  --accent:#0F7B62; --accentText:#FFFFFF; --accentSoft:rgba(15,123,98,.12);
+  --ok:#1F8A5B; --okSoft:rgba(31,138,91,.14);
+  --warn:#B7791F; --warnSoft:rgba(183,121,31,.14);
+  --bad:#C0492B; --badSoft:rgba(192,73,43,.12);
+  --r-card:18px; --r-chip:999px; --r-input:11px; --r-poster:12px;
+  --shadow-sm:0 1px 2px rgba(28,24,16,.06), 0 2px 8px rgba(28,24,16,.05);
+  --shadow-md:0 8px 22px rgba(40,34,22,.12);
+  --shadow-lg:0 24px 60px rgba(30,26,18,.22);
+  --font-body:-apple-system,"SF Pro Text",system-ui,sans-serif;
+  --font-display:"Newsreader",Georgia,serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --nav-weight:500;
+  color-scheme:light;
+}
+
+/* ── Daylight (default, fresh warm light) ── */
+[data-theme="daylight"]{
+  --bg:#F4F2EC; --bg2:#FFFFFF; --bg3:#EAE6DC; --elev:#FFFFFF;
+  --line:rgba(28,24,16,.10); --line2:rgba(28,24,16,.18);
+  --text:#1A1712; --dim:rgba(26,23,18,.56); --faint:rgba(26,23,18,.34);
+  --accent:#0F7B62; --accentText:#FFFFFF; --accentSoft:rgba(15,123,98,.12);
+  --ok:#1F8A5B; --okSoft:rgba(31,138,91,.14);
+  --warn:#B7791F; --warnSoft:rgba(183,121,31,.14);
+  --bad:#C0492B; --badSoft:rgba(192,73,43,.12);
+  --font-display:"Newsreader",Georgia,serif;
+  --nav-weight:500; --r-card:18px; --r-poster:12px;
+  --shadow-sm:0 1px 2px rgba(28,24,16,.06), 0 2px 8px rgba(28,24,16,.05);
+  --shadow-md:0 10px 26px rgba(40,34,22,.13);
+  --shadow-lg:0 24px 60px rgba(30,26,18,.20);
+  color-scheme:light;
+}
+
+/* ── Aurora (calm cool dark) ── */
+[data-theme="aurora"]{
+  --bg:#0E1117; --bg2:#181C24; --bg3:#212630; --elev:#1E232C;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.16);
+  --text:#F4F6FA; --dim:rgba(236,240,250,.62); --faint:rgba(236,240,250,.34);
+  --accent:#5E7CFF; --accentText:#FFFFFF; --accentSoft:rgba(94,124,255,.18);
+  --ok:#46C98B; --okSoft:rgba(70,201,139,.16);
+  --warn:#F0A93B; --warnSoft:rgba(240,169,59,.16);
+  --bad:#EF5A6F; --badSoft:rgba(239,90,111,.16);
+  --font-display:-apple-system,"SF Pro Display",system-ui,sans-serif;
+  --nav-weight:600; --r-card:18px; --r-poster:14px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow-md:0 12px 30px rgba(0,0,0,.45);
+  --shadow-lg:0 28px 70px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+
+/* ── Vivid (graphite + coral, condensed) ── */
+[data-theme="vivid"]{
+  --bg:#0A0A0C; --bg2:#141417; --bg3:#1E1E22; --elev:#17171B;
+  --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.20);
+  --text:#FAFAFA; --dim:rgba(250,250,250,.58); --faint:rgba(250,250,250,.32);
+  --accent:#FF5C49; --accentText:#0A0A0C; --accentSoft:rgba(255,92,73,.16);
+  --ok:#7BE06B; --okSoft:rgba(123,224,107,.14);
+  --warn:#E6C84A; --warnSoft:rgba(230,200,74,.14);
+  --bad:#FF5C49; --badSoft:rgba(255,92,73,.16);
+  --font-display:"Space Grotesk",-apple-system,system-ui,sans-serif;
+  --nav-weight:700; --r-card:14px; --r-poster:6px; --r-chip:8px; --r-input:8px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.5);
+  --shadow-md:0 12px 30px rgba(0,0,0,.5);
+  --shadow-lg:0 28px 70px rgba(0,0,0,.66);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--text);
+  font:14.5px/1.55 var(--font-body);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+a{color:var(--accent);text-decoration:none}
+::selection{background:var(--accentSoft)}
+button{font-family:inherit}
+.mono{font-family:var(--font-mono)}
+
+/* ============ App shell ============ */
+.appbar{
+  position:sticky; top:0; z-index:40;
+  display:flex; align-items:center; gap:16px;
+  padding:14px 26px;
+  background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:saturate(1.4) blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex; align-items:center; gap:12px; min-width:0}
+.brand .glyph{
+  width:34px; height:34px; border-radius:10px; flex:none;
+  background:linear-gradient(140deg, var(--accent), color-mix(in srgb,var(--accent) 55%, #000));
+  display:grid; place-items:center; color:var(--accentText);
+  font-weight:800; font-size:17px; box-shadow:var(--shadow-sm);
+}
+.brand h1{
+  font:700 17px/1 var(--font-body); margin:0; letter-spacing:-.3px;
+  display:flex; align-items:center; gap:9px; white-space:nowrap;
+}
+.brand .ver{
+  font:600 11px/1 var(--font-mono); color:var(--dim);
+  background:var(--bg3); padding:4px 8px; border-radius:7px; letter-spacing:0;
+}
+.appbar nav{display:flex; gap:3px; margin-left:8px}
+.appbar nav button{
+  background:transparent; border:0; color:var(--dim);
+  font-weight:600; font-size:14px; padding:9px 15px; border-radius:11px;
+  cursor:pointer; transition:.14s; letter-spacing:-.1px;
+}
+.appbar nav button:hover{color:var(--text); background:color-mix(in srgb,var(--text) 6%, transparent)}
+.appbar nav button.active{background:var(--accentSoft); color:var(--accent)}
+.appbar .spacer{margin-left:auto}
+
+/* theme switcher */
+.themeswitch{display:flex; gap:3px; padding:3px; background:var(--bg3); border-radius:11px; border:1px solid var(--line)}
+.themeswitch button{
+  border:0; background:transparent; cursor:pointer; color:var(--dim);
+  font:600 12.5px/1 var(--font-body); padding:7px 11px; border-radius:8px; transition:.14s;
+  display:flex; align-items:center; gap:6px;
+}
+.themeswitch button .dot{width:11px;height:11px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(127,127,127,.25)}
+.themeswitch button:hover{color:var(--text)}
+.themeswitch button.active{background:var(--bg2); color:var(--text); box-shadow:var(--shadow-sm)}
+
+main{max-width:1120px; margin:0 auto; padding:28px 26px 120px}
+.tab{display:none}
+.tab.active{display:block}
+
+/* section heads */
+.page-head{display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:20px}
+.page-head .title{font:700 26px/1.1 var(--font-display); letter-spacing:-.4px}
+[data-theme="daylight"] .page-head .title{font-weight:600}
+.page-head .sub{color:var(--dim); font-size:14px; margin-top:7px; max-width:62ch}
+.eyebrow{
+  font:700 11px/1 var(--font-body); text-transform:uppercase; letter-spacing:.9px;
+  color:var(--faint); margin:30px 0 13px; display:flex; align-items:center; gap:9px;
+}
+.eyebrow:first-child{margin-top:0}
+.eyebrow .count{color:var(--accent); background:var(--accentSoft); padding:2px 8px; border-radius:999px; letter-spacing:0}
+
+/* ============ Buttons ============ */
+.btn{
+  display:inline-flex; align-items:center; gap:8px; justify-content:center;
+  background:var(--accent); color:var(--accentText); border:0;
+  padding:10px 16px; border-radius:11px; font-weight:650; font-size:13.5px;
+  cursor:pointer; transition:.14s; box-shadow:var(--shadow-sm); white-space:nowrap;
+}
+.btn:hover{filter:brightness(1.06); transform:translateY(-1px)}
+.btn:active{transform:none}
+.btn svg{width:16px;height:16px}
+.btn.ghost{background:var(--bg2); color:var(--text); box-shadow:inset 0 0 0 1px var(--line)}
+.btn.ghost:hover{background:var(--bg3); filter:none}
+.btn.subtle{background:transparent; color:var(--dim); box-shadow:none}
+.btn.subtle:hover{background:color-mix(in srgb,var(--text) 7%, transparent); color:var(--text); transform:none}
+.btn.danger{background:var(--badSoft); color:var(--bad); box-shadow:none}
+.btn.danger:hover{background:var(--bad); color:#fff}
+.btn.sm{padding:7px 11px; font-size:12.5px; border-radius:9px}
+.btn.xs{padding:5px 9px; font-size:12px; border-radius:8px; gap:5px}
+.btn:disabled{opacity:.4; cursor:default; transform:none; filter:none}
+.iconbtn{
+  width:32px; height:32px; display:grid; place-items:center; padding:0;
+  background:var(--bg2); color:var(--dim); border:0; border-radius:9px; cursor:pointer;
+  box-shadow:inset 0 0 0 1px var(--line); transition:.14s;
+}
+.iconbtn:hover{color:var(--text); background:var(--bg3)}
+.iconbtn svg{width:16px;height:16px}
+
+/* ============ Cards / surfaces ============ */
+.card{background:var(--bg2); border:1px solid var(--line); border-radius:var(--r-card); box-shadow:var(--shadow-sm)}
+.pad{padding:18px 20px}
+
+/* ============ Badges & pills ============ */
+.pill{
+  display:inline-flex; align-items:center; gap:6px;
+  font:650 11.5px/1 var(--font-body); padding:5px 10px; border-radius:999px;
+  border:1px solid var(--line); color:var(--dim); background:var(--bg2);
+}
+[data-theme="vivid"] .pill{text-transform:uppercase; letter-spacing:.4px; border-radius:6px; font-size:10.5px}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.on{color:var(--ok); background:var(--okSoft); border-color:transparent}
+.pill.off{color:var(--faint)}
+.pill.type{color:var(--accent); background:var(--accentSoft); border-color:transparent}
+.pill.hero{color:var(--warn); background:var(--warnSoft); border-color:transparent}
+.pill.warn{color:var(--warn); background:var(--warnSoft); border-color:transparent}
+
+/* ============ Toggle ============ */
+.toggle{position:relative; width:44px; height:26px; flex:none; cursor:pointer}
+.toggle input{position:absolute; opacity:0; inset:0; margin:0; cursor:pointer}
+.toggle span{position:absolute; inset:0; background:var(--bg3); border:1px solid var(--line); border-radius:999px; transition:.18s}
+.toggle span::after{content:""; position:absolute; width:20px; height:20px; border-radius:50%; background:var(--faint); top:2px; left:2px; transition:.18s cubic-bezier(.4,1.3,.5,1)}
+.toggle input:checked + span{background:var(--accentSoft); border-color:transparent}
+.toggle input:checked + span::after{background:var(--accent); left:20px}
+
+/* ============ Stat cards (dashboard) ============ */
+.stat-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px}
+.stat{padding:18px 20px; display:flex; flex-direction:column; gap:3px; position:relative; overflow:hidden}
+.stat .ico{position:absolute; top:16px; right:16px; color:var(--faint); opacity:.7}
+.stat .ico svg{width:20px;height:20px}
+.stat .n{font:800 32px/1 var(--font-display); letter-spacing:-1px}
+[data-theme="daylight"] .stat .n{font-weight:600}
+.stat .l{color:var(--text); font-weight:600; font-size:13.5px; margin-top:8px}
+.stat .s{color:var(--faint); font-size:12px; margin-top:3px}
+
+.integ-row{display:flex; gap:10px; flex-wrap:wrap}
+.integ{
+  display:flex; align-items:center; gap:10px; padding:11px 15px;
+  background:var(--bg2); border:1px solid var(--line); border-radius:13px; box-shadow:var(--shadow-sm);
+}
+.integ .led{width:9px;height:9px;border-radius:50%; background:var(--faint); box-shadow:0 0 0 4px transparent}
+.integ.on .led{background:var(--ok); box-shadow:0 0 0 4px var(--okSoft)}
+.integ.down .led{background:var(--bad); box-shadow:0 0 0 4px var(--badSoft)}
+.integ.down .st{color:var(--bad)}
+.integ .nm{font-weight:650; font-size:13.5px}
+.integ .st{font-size:11.5px; color:var(--dim)}
+/* Integrations page */
+.integ-card{padding:16px 18px}
+.integ-card + .integ-card{margin-top:14px}
+.integ-card-head{display:flex; align-items:center; gap:13px}
+.integ-card .ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--bg2);border:1px solid var(--line);color:var(--accent);flex:none}
+.integ-card .nm{font-weight:700; font-size:15.5px}
+.integ-card .integ{padding:6px 11px; border-radius:999px; box-shadow:none}
+.integ-card .integ.on{background:var(--okSoft); border-color:transparent}
+.integ-card .integ.down{background:var(--badSoft); border-color:transparent}
+.integ-settings{margin-top:15px; padding-top:15px; border-top:1px solid var(--line)}
+.set-label{font-weight:650; font-size:13.5px}
+.chip .chip-x{margin-left:1px; opacity:.6; font-weight:700; cursor:pointer; padding:0 2px; line-height:1; font-size:14px}
+.chip .chip-x:hover{opacity:1}
+
+/* job + config tables */
+.tbl{width:100%; border-collapse:collapse}
+.tbl th{text-align:left; font:600 11px/1 var(--font-body); text-transform:uppercase; letter-spacing:.6px; color:var(--faint); padding:10px 14px}
+.tbl td{padding:13px 14px; border-top:1px solid var(--line); font-size:13.5px; vertical-align:middle}
+.tbl tr:first-child td{border-top:0}
+.tbl .k{color:var(--dim); font-family:var(--font-mono); font-size:12.5px}
+.actions-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px}
+
+/* ============ WYSIWYG Section board ============ */
+.board{
+  background:var(--bg3); border:1px solid var(--line); border-radius:24px;
+  padding:18px; position:relative;
+}
+.board-device{
+  max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:0;
+}
+.board-statusbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:4px 8px 12px; color:var(--faint); font-size:12px; font-weight:600;
+}
+.board-statusbar .lib{font:700 19px/1 var(--font-display); color:var(--text); letter-spacing:-.3px}
+[data-theme="daylight"] .board-statusbar .lib{font-weight:600}
+
+/* a "zone" is a drop target between/around the built-in shelves */
+.zone{display:flex; flex-direction:column; gap:12px; padding:6px 0; transition:.15s; border-radius:14px}
+.zone.empty{min-height:8px}
+.zone.dragover{background:var(--accentSoft); box-shadow:inset 0 0 0 2px var(--accent)}
+.zone-tip{
+  text-align:center; color:var(--faint); font-size:12px; font-weight:600;
+  padding:9px; border:1.5px dashed var(--line2); border-radius:12px; letter-spacing:.2px;
+}
+.zone.dragover .zone-tip{color:var(--accent); border-color:var(--accent)}
+
+/* built-in shelf anchor */
+.anchor{
+  display:flex; flex-direction:column; gap:10px; padding:14px 16px;
+  background:var(--bg2); border:1px solid var(--line); border-radius:16px;
+  position:relative; box-shadow:var(--shadow-sm);
+}
+.anchor::before{
+  content:"BUILT-IN"; position:absolute; top:14px; right:16px;
+  font:700 9.5px/1 var(--font-mono); letter-spacing:.8px; color:var(--faint);
+  background:var(--bg3); padding:4px 7px; border-radius:6px;
+}
+.anchor .ah{display:flex; align-items:center; gap:10px}
+.anchor .ah .nm{font:700 16px/1 var(--font-display); letter-spacing:-.2px; white-space:nowrap}
+[data-theme="daylight"] .anchor .ah .nm{font-weight:600}
+.anchor .ah .sys{color:var(--faint)}
+.anchor .ah .sys svg{width:15px;height:15px;display:block}
+
+/* custom section block (draggable) */
+.block{
+  display:flex; gap:13px; padding:13px 15px 14px;
+  background:var(--bg2); border:1px solid var(--line); border-radius:16px;
+  box-shadow:var(--shadow-sm); transition:box-shadow .15s, transform .05s, border-color .15s, opacity .12s;
+  align-items:stretch;
+}
+.block:hover{border-color:var(--line2); box-shadow:var(--shadow-md)}
+.block.dragging{opacity:.4}
+.block.disabled{opacity:.66}
+/* the element that follows the cursor while dragging */
+.drag-clone{position:fixed; z-index:9999; margin:0; pointer-events:none;
+  opacity:.97; border-radius:16px; transform:rotate(-1.2deg);
+  box-shadow:0 18px 44px rgba(0,0,0,.42)}
+body.dragging-active{cursor:grabbing; user-select:none; -webkit-user-select:none}
+.block .grip:active{cursor:grabbing}
+.block.disabled .shelf-prev{filter:grayscale(.7) opacity(.7)}
+.block .grip{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  color:var(--faint); width:18px; flex:none; cursor:grab;
+}
+.block .grip:hover{color:var(--dim)}
+.block .grip span{width:4px;height:4px;border-radius:50%;background:currentColor}
+.block .body{flex:1; min-width:0; display:flex; flex-direction:column; gap:9px}
+.block .top{display:flex; align-items:flex-start; gap:10px}
+.block .heading{flex:1; min-width:0}
+.block .heading .t{font:650 16px/1.2 var(--font-body); letter-spacing:-.2px; display:flex; align-items:center; gap:8px}
+.block .heading .s{color:var(--dim); font-size:12.5px; margin-top:2px}
+.block .controls{display:flex; align-items:center; gap:8px; flex:none}
+.block .tags{display:flex; gap:6px; flex-wrap:wrap}
+.block .rowacts{display:flex; gap:5px; opacity:0; transition:.15s}
+.block:hover .rowacts, .block:focus-within .rowacts{opacity:1}
+
+/* mini shelf preview (WYSIWYG) */
+.shelf-prev{display:flex; flex-direction:column; gap:7px}
+.shelf-prev .lbl{font:650 12px/1 var(--font-body); color:var(--dim); display:flex; align-items:center; gap:6px}
+.shelf-prev .strip{display:flex; gap:7px; overflow:hidden; -webkit-mask-image:linear-gradient(90deg,#000 86%,transparent)}
+.mini-poster{
+  width:46px; height:69px; flex:none; border-radius:calc(var(--r-poster) * .7);
+  position:relative; overflow:hidden; box-shadow:var(--shadow-sm);
+}
+.mini-poster.wide{width:122px; height:69px}
+.mini-poster .sheen{position:absolute; inset:0; background:linear-gradient(150deg, rgba(255,255,255,.16), transparent 60%)}
+/* hero preview */
+.hero-prev{display:flex; flex-direction:column; gap:7px}
+.hero-prev .lbl{font:650 12px/1 var(--font-body); color:var(--dim)}
+.hero-prev .frame{
+  height:104px; border-radius:calc(var(--r-poster)*1.1); position:relative; overflow:hidden;
+  box-shadow:var(--shadow-sm); display:flex; align-items:flex-end; padding:13px 15px;
+}
+.hero-prev .frame .scrim{position:absolute; inset:0; background:linear-gradient(90deg, rgba(0,0,0,.5), transparent 70%)}
+.hero-prev .frame .cap{position:relative; color:#fff; text-shadow:0 1px 8px rgba(0,0,0,.5)}
+.hero-prev .frame .cap .ht{font:700 16px/1.1 var(--font-display); letter-spacing:-.2px}
+.hero-prev .frame .cap .hs{font-size:11.5px; opacity:.85; margin-top:3px}
+
+/* drag placeholder line */
+.drop-line{height:3px; background:var(--accent); border-radius:3px; margin:2px 0; box-shadow:0 0 0 4px var(--accentSoft)}
+
+/* empty board hint */
+.board-empty{
+  text-align:center; color:var(--faint); padding:30px; font-size:13px;
+}
+
+/* ============ Forms / editor ============ */
+.field{margin-bottom:0}
+.field > label{display:flex; align-items:center; gap:7px; font:600 12.5px/1 var(--font-body); color:var(--text); margin-bottom:7px}
+.field .opt{color:var(--faint); font-weight:500}
+.field .hint{color:var(--faint); font-size:12px; margin-top:6px; line-height:1.45}
+.field .hint code, .hint code{font-family:var(--font-mono); font-size:11.5px; background:var(--bg3); padding:1px 5px; border-radius:5px}
+input[type=text], input[type=number], select, textarea{
+  width:100%; background:var(--bg2); border:1px solid var(--line); color:var(--text);
+  padding:10px 12px; border-radius:var(--r-input); font:inherit; font-size:13.5px; transition:.14s;
+}
+[data-theme="aurora"] input, [data-theme="aurora"] select, [data-theme="aurora"] textarea,
+[data-theme="vivid"] input, [data-theme="vivid"] select, [data-theme="vivid"] textarea{background:var(--bg3)}
+input:focus, select:focus, textarea:focus{outline:0; border-color:var(--accent); box-shadow:0 0 0 3px var(--accentSoft)}
+input::placeholder{color:var(--faint)}
+select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px}
+.stack{display:flex; flex-direction:column; gap:16px}
+
+/* segmented control */
+.seg{display:inline-flex; gap:3px; padding:3px; background:var(--bg3); border-radius:11px; border:1px solid var(--line)}
+.seg button{border:0; background:transparent; cursor:pointer; color:var(--dim); font:600 13px/1 var(--font-body); padding:8px 13px; border-radius:8px; transition:.14s; display:flex; align-items:center; gap:6px}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--bg2); color:var(--text); box-shadow:var(--shadow-sm)}
+.seg.wide{display:flex}
+.seg.wide button{flex:1; justify-content:center}
+
+/* type picker cards */
+.typecards{display:grid; grid-template-columns:1fr 1fr; gap:11px}
+.typecard{
+  text-align:left; cursor:pointer; padding:14px; border-radius:14px;
+  background:var(--bg2); border:1.5px solid var(--line); transition:.14s; display:flex; gap:12px; align-items:flex-start;
+}
+.typecard:hover{border-color:var(--line2)}
+.typecard.on{border-color:var(--accent); background:var(--accentSoft)}
+.typecard .ti{width:36px;height:36px;border-radius:10px; background:var(--bg3); display:grid; place-items:center; color:var(--accent); flex:none}
+.typecard.on .ti{background:var(--bg2)}
+.typecard .ti svg{width:19px;height:19px}
+.typecard .tt{font-weight:650; font-size:14px}
+.typecard .td{color:var(--dim); font-size:12px; margin-top:3px; line-height:1.4}
+
+/* token / chip pickers */
+.tokenfield{background:var(--bg2); border:1px solid var(--line); border-radius:var(--r-input); padding:9px}
+[data-theme="aurora"] .tokenfield, [data-theme="vivid"] .tokenfield{background:var(--bg3)}
+.tokenfield .search{border:0; background:transparent; padding:4px 4px 8px; box-shadow:none}
+.tokenfield .search:focus{box-shadow:none}
+.chips{display:flex; flex-wrap:wrap; gap:7px; max-height:148px; overflow:auto}
+.chip{
+  display:inline-flex; align-items:center; gap:5px; cursor:pointer;
+  font:600 12.5px/1 var(--font-body); padding:7px 11px; border-radius:var(--r-chip);
+  border:1px solid var(--line); color:var(--dim); background:var(--bg2); transition:.12s; user-select:none;
+}
+[data-theme="aurora"] .chip, [data-theme="vivid"] .chip{background:var(--bg2)}
+.chip:hover{border-color:var(--line2); color:var(--text)}
+.chip.sel{background:var(--accent); color:var(--accentText); border-color:transparent}
+.chip.dim{opacity:.4}
+.chip .ct{opacity:.6; font-variant-numeric:tabular-nums; font-size:11px}
+.chip.sel .ct{opacity:.8}
+.selectedline{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:9px}
+
+/* slider */
+.slider-row{display:flex; align-items:center; gap:14px}
+.slider-row input[type=range]{flex:1; -webkit-appearance:none; appearance:none; height:6px; border-radius:6px; background:var(--bg3); cursor:pointer}
+.slider-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:var(--accent); box-shadow:var(--shadow-sm), 0 0 0 4px var(--accentSoft); cursor:grab; border:2px solid var(--bg2)}
+.slider-row input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--accent); border:2px solid var(--bg2); cursor:grab}
+.slider-val{font:700 15px/1 var(--font-mono); min-width:56px; text-align:right; color:var(--text)}
+.slider-val small{font-size:11px; color:var(--faint); font-weight:500}
+
+/* divider w/ label inside editor */
+.subhead{font:700 11px/1 var(--font-body); text-transform:uppercase; letter-spacing:.8px; color:var(--faint); margin:4px 0 0}
+
+/* preview thumbs */
+.prev-thumbs{display:flex; gap:8px; overflow:auto; padding-bottom:4px}
+.prev-thumbs .pt{width:54px; height:81px; border-radius:8px; flex:none; position:relative; overflow:hidden; box-shadow:var(--shadow-sm); display:flex; align-items:flex-end}
+.prev-thumbs .pt .ptt{position:relative; font:600 8.5px/1.1 var(--font-body); color:#fff; padding:5px; text-shadow:0 1px 3px rgba(0,0,0,.7)}
+
+/* ============ Plugins (Integrations tab) ============ */
+.plugin-add{padding:16px 18px}
+.plugin-add .nm{font-weight:700; font-size:15.5px; display:flex; align-items:center; gap:13px}
+.plugin-add .ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--bg2);border:1px solid var(--line);color:var(--accent);flex:none}
+.plugin-add .ph{color:var(--dim); font-size:12px; margin:10px 0 11px; max-width:74ch; line-height:1.5}
+.plugin-add .row{display:flex; gap:8px}
+.plugin-empty{color:var(--dim); font-size:12.5px; padding:16px 18px; text-align:center; background:var(--bg2); border:1px dashed var(--line); border-radius:var(--r-card)}
+.integ-card .plug-actions{display:flex; gap:10px; align-items:center; margin-top:13px}
+.integ-card .plug-actions .toglabel{display:flex; gap:9px; align-items:center; font-size:13px; cursor:pointer; margin-right:auto}
+
+/* ============ Info tooltip (label hint popover) ============ */
+.tip-ic{position:relative; display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; color:var(--faint); cursor:help; flex:none}
+.tip-ic:hover, .tip-ic:focus{color:var(--accent); outline:0}
+.tip-ic svg{width:14px; height:14px}
+.tip-ic .tip{
+  display:none; position:absolute; z-index:60; top:calc(100% + 9px); left:-8px; width:288px;
+  background:var(--bg2); border:1px solid var(--line2); border-radius:12px; box-shadow:var(--shadow-lg);
+  padding:13px 14px; cursor:default; text-transform:none; letter-spacing:0;
+}
+.tip-ic:hover .tip, .tip-ic:focus .tip, .tip-ic .tip:hover{display:block}
+.tip-ic .tip::before{content:""; position:absolute; top:-6px; left:11px; width:11px; height:11px; background:var(--bg2); border-left:1px solid var(--line2); border-top:1px solid var(--line2); transform:rotate(45deg)}
+/* right-anchored variant for fields near the drawer's right edge (e.g. Subtitle) */
+.tip-ic.tip-right .tip{left:auto; right:-8px}
+.tip-ic.tip-right .tip::before{left:auto; right:11px}
+.tip h5{font:700 12px/1.2 var(--font-body); color:var(--text); margin:0 0 7px}
+.tip p{font:500 11.5px/1.5 var(--font-body); color:var(--dim); margin:0 0 9px}
+.tip .tprow{display:flex; gap:9px; align-items:baseline; margin:5px 0}
+.tip code{font-family:var(--font-mono); font-size:11px; background:var(--bg3); color:var(--accent); padding:2px 6px; border-radius:6px; white-space:nowrap}
+.tip .tprow span{font-size:11.5px; color:var(--dim); line-height:1.4}
+.tip .tpnote{font-size:11px; color:var(--faint); margin:9px 0 0; line-height:1.45}
+
+/* ============ Drawer loading overlay ============ */
+.drawer-loading{position:absolute; inset:0; z-index:30; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:13px; background:color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter:blur(2px)}
+.drawer-loading .lbl{font:600 12.5px/1 var(--font-body); color:var(--dim)}
+.spinner{width:30px; height:30px; border-radius:50%; border:3px solid var(--line2); border-top-color:var(--accent); animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.chips-more{width:100%; text-align:center; font:600 11px/1 var(--font-body); color:var(--faint); padding:6px 0 2px}
+
+/* ============ Ratings groups (drag) ============ */
+.rt-group{cursor:default}
+.rt-group.dragging{opacity:.45}
+.rt-grip{display:flex;align-items:center;color:var(--faint);cursor:grab;padding-top:5px}
+.rt-grip:hover{color:var(--dim)}
+.rt-grip svg{width:18px;height:18px}
+.rt-dropline{height:3px;background:var(--accent);border-radius:3px;margin:3px 0 14px;box-shadow:0 0 0 4px var(--accentSoft)}
+
+/* ============ Drawer (editor) ============ */
+.scrim-bg{position:fixed; inset:0; background:rgba(10,8,4,.46); backdrop-filter:blur(3px); opacity:0; pointer-events:none; transition:.22s; z-index:60}
+.scrim-bg.open{opacity:1; pointer-events:auto}
+.drawer{
+  position:fixed; top:0; right:0; bottom:0; width:min(560px,100vw);
+  background:var(--bg); border-left:1px solid var(--line); box-shadow:var(--shadow-lg);
+  transform:translateX(100%); transition:transform .3s cubic-bezier(.32,.72,.3,1); z-index:61;
+  display:flex; flex-direction:column;
+}
+.drawer.open{transform:none}
+.drawer-head{
+  display:flex; align-items:center; gap:12px; padding:18px 22px; border-bottom:1px solid var(--line);
+  position:sticky; top:0; background:var(--bg); z-index:2;
+}
+.drawer-head .dt{font:700 17px/1.1 var(--font-display); letter-spacing:-.2px}
+[data-theme="daylight"] .drawer-head .dt{font-weight:600}
+.drawer-head .ds{color:var(--dim); font-size:12.5px; margin-top:2px}
+.drawer-body{flex:1; overflow:auto; padding:22px; position:relative}
+.drawer-foot{
+  display:flex; align-items:center; gap:10px; padding:16px 22px; border-top:1px solid var(--line);
+  background:var(--bg); position:sticky; bottom:0;
+}
+.drawer-foot .spacer{margin-left:auto}
+
+/* collapsible group inside editor */
+.group{border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--bg2)}
+[data-theme="aurora"] .group, [data-theme="vivid"] .group{background:color-mix(in srgb,var(--bg2) 60%,transparent)}
+.group > .gh{display:flex; align-items:center; gap:10px; padding:13px 15px; cursor:pointer; user-select:none}
+.group > .gh .gi{color:var(--accent); display:flex}
+.group > .gh .gi svg{width:17px;height:17px}
+.group > .gh .gt{font-weight:650; font-size:14px; flex:1}
+.group > .gh .chev{color:var(--faint); transition:.2s}
+.group.open > .gh .chev{transform:rotate(90deg)}
+.group > .gc{padding:0 15px; max-height:0; overflow:hidden; transition:max-height .25s ease, padding .25s ease}
+.group.open > .gc{padding:0 15px 16px; max-height:1400px}
+.group .gc .stack{padding-top:4px}
+
+/* ============ Toast ============ */
+.toast{
+  position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(14px);
+  background:var(--text); color:var(--bg); padding:12px 18px; border-radius:13px; font-weight:600; font-size:13.5px;
+  box-shadow:var(--shadow-lg); opacity:0; pointer-events:none; transition:.24s; z-index:99;
+  display:flex; align-items:center; gap:10px;
+}
+.toast.show{opacity:1; transform:translateX(-50%)}
+.toast.err{background:var(--bad); color:#fff}
+.toast svg{width:17px;height:17px}
+
+/* demo banner */
+.demo-banner{
+  display:flex; align-items:center; gap:9px; justify-content:center;
+  background:var(--warnSoft); color:var(--warn); font-weight:600; font-size:12.5px;
+  padding:8px; border-bottom:1px solid var(--line);
+}
+.demo-banner svg{width:15px;height:15px}
+
+/* empty state */
+.empty{
+  text-align:center; color:var(--dim); padding:48px 30px; border:1.5px dashed var(--line2);
+  border-radius:18px; background:var(--bg2);
+}
+.empty .ei{width:46px;height:46px;border-radius:14px; background:var(--bg3); display:grid; place-items:center; margin:0 auto 14px; color:var(--faint)}
+.empty .et{font-weight:650; font-size:15px; color:var(--text)}
+.empty .es{font-size:13px; margin-top:5px}
+
+.muted{color:var(--dim)}
+.hidden{display:none !important}
+.right{margin-left:auto}
+
+/* scrollbars */
+.chips::-webkit-scrollbar, .drawer-body::-webkit-scrollbar, .prev-thumbs::-webkit-scrollbar{width:8px; height:8px}
+.chips::-webkit-scrollbar-thumb, .drawer-body::-webkit-scrollbar-thumb, .prev-thumbs::-webkit-scrollbar-thumb{background:var(--line2); border-radius:8px}
+
+@media (max-width:720px){
+  .grid2,.grid3,.typecards{grid-template-columns:1fr}
+  main{padding:20px 16px 100px}
+  .appbar{flex-wrap:wrap; gap:10px}
+}
+
+</style>
+</head>
+<body>
+
+<!-- ════════ Auth gate (setup / login) ════════ -->
+<style>
+  .auth-gate{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;
+    padding:24px;background:var(--bg);background:radial-gradient(120% 120% at 50% 0%, var(--bg2), var(--bg));}
+  .auth-card{width:100%;max-width:380px;background:var(--elev);border:1px solid var(--line);
+    border-radius:18px;padding:28px 26px;box-shadow:0 24px 60px rgba(0,0,0,.18);}
+  .auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+  .auth-brand .glyph{width:40px;height:40px;border-radius:11px;background:var(--accent);color:var(--accentText);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;}
+  .auth-brand h2{margin:0;font-size:18px;color:var(--text);}
+  .auth-brand p{margin:2px 0 0;font-size:13px;}
+  .auth-field{display:block;margin-bottom:14px;}
+  .auth-field span{display:block;font-size:12px;font-weight:650;color:var(--dim);margin-bottom:6px;}
+  .auth-field input{width:100%;box-sizing:border-box;padding:11px 13px;border:1px solid var(--line2);
+    border-radius:11px;background:var(--bg2);color:var(--text);font-size:14px;outline:none;}
+  .auth-field input:focus{border-color:var(--accent);}
+  .auth-err{margin:0 0 14px;padding:9px 12px;border-radius:10px;font-size:13px;
+    background:rgba(220,60,50,.12);color:#d6473b;border:1px solid rgba(220,60,50,.25);}
+  #auth-submit{width:100%;justify-content:center;padding:12px;font-size:14.5px;}
+  .muted{color:var(--dim);}
+</style>
+<div id="auth-gate" class="auth-gate hidden">
+  <form class="auth-card" id="auth-form" onsubmit="return submitAuth(event)">
+    <div class="auth-brand">
+      <div><h2 id="auth-title">Sign in</h2><p class="muted" id="auth-sub">Enter your admin credentials.</p></div>
+    </div>
+    <label class="auth-field"><span>Username</span>
+      <input id="auth-user" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
+    <label class="auth-field"><span>Password</span>
+      <input id="auth-pass" type="password" autocomplete="current-password" required></label>
+    <label class="auth-field hidden" id="auth-confirm-field"><span>Confirm password</span>
+      <input id="auth-confirm" type="password" autocomplete="new-password"></label>
+    <div class="auth-err hidden" id="auth-err"></div>
+    <button class="btn" type="submit" id="auth-submit">Sign in</button>
+  </form>
+</div>
+
+<!-- Plex setup gate: shown before anything else until Plex is reachable. -->
+<div id="plex-gate" class="auth-gate hidden">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div><h2>Connect Plex first</h2><p class="muted" id="plex-gate-sub">Poptonium needs a working Plex Media Server connection before you can use the dashboard.</p></div>
+    </div>
+    <div class="auth-err" id="plex-gate-detail" style="margin-bottom:12px"></div>
+    <p class="muted" style="font-size:13px;line-height:1.5">
+      Set <code>PLEX_URL</code> (for example <code>http://plex:32400</code>) and
+      <code>PLEX_TOKEN</code> as container variables, then restart the container.
+      These are secrets and are not editable here.
+    </p>
+    <button class="btn" type="button" id="plex-gate-retry" onclick="gate()">Retry</button>
+  </div>
+</div>
+
+<!-- ════════ App bar ════════ -->
+<header class="appbar">
+  <div class="brand">
+    <h1>Poptonium <span class="ver" id="ver">·</span></h1>
+  </div>
+  <nav>
+    <button data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>
+    <button data-tab="integrations" onclick="switchTab('integrations')">Integrations</button>
+    <button data-tab="sections" class="active" onclick="switchTab('sections')">Sections</button>
+    <button data-tab="ratings" onclick="switchTab('ratings')">Ratings</button>
+    <button data-tab="settings" onclick="switchTab('settings')">Settings</button>
+  </nav>
+  <button class="btn ghost sm hidden" id="logout-btn" onclick="logout()" style="margin-left:auto">Sign out</button>
+</header>
+
+<main>
+  <!-- ════════ DASHBOARD ════════ -->
+  <section class="tab" id="tab-dashboard">
+    <div class="page-head">
+      <div><div class="title">Overview</div><div class="sub">Health of the cache, integrations and scheduled jobs.</div></div>
+    </div>
+    <div class="eyebrow">Integrations</div>
+    <div class="integ-row" id="integrations"></div>
+    <div class="eyebrow">Caches</div>
+    <div class="stat-grid" id="cache-cards"></div>
+    <div class="actions-row">
+      <button class="btn" onclick="runAction('library_ratings')">↻ Sync library ratings</button>
+      <button class="btn ghost" onclick="runAction('popular_refresh')">↻ Refresh popular</button>
+      <button class="btn ghost" onclick="clearCache('ratings')">Clear ratings cache</button>
+      <button class="btn ghost" onclick="clearCache('popular')">Clear popular cache</button>
+    </div>
+    <div class="eyebrow">Scheduled jobs</div>
+    <div class="card"><table class="tbl"><tbody id="jobs"></tbody></table></div>
+  </section>
+
+  <!-- ════════ INTEGRATIONS ════════ -->
+  <section class="tab" id="tab-integrations">
+    <div class="page-head">
+      <div><div class="title">Integrations</div><div class="sub">Connection health and per-service settings.</div></div>
+    </div>
+    <div id="integ-list"></div>
+  </section>
+
+  <!-- ════════ SECTIONS (WYSIWYG board) ════════ -->
+  <section class="tab active" id="tab-sections">
+    <div class="page-head">
+      <div>
+        <div class="title">Library layout</div>
+        <div class="sub">This is your Library page, top to bottom. The grey blocks are the built-in shelves; drop your custom sections into the gaps to place them exactly where they'll appear.</div>
+      </div>
+      <button class="btn" onclick="openEditor()">+ Add section <span class="count hidden" id="sec-count" style="margin-left:2px"></span></button>
+    </div>
+    <div class="board">
+      <div class="board-device" id="board-device"></div>
+    </div>
+  </section>
+
+  <!-- ════════ RATINGS ════════ -->
+  <section class="tab" id="tab-ratings">
+    <div class="page-head">
+      <div><div class="title">Ratings</div><div class="sub">Which score badges appear on each item, and the single rating used for sorting and section minimums.</div></div>
+    </div>
+
+    <div class="eyebrow">Live preview</div>
+    <div class="card pad" id="rt-preview"></div>
+
+    <div class="eyebrow">Badge groups</div>
+    <p class="muted" style="margin:-4px 0 14px;font-size:13px;max-width:74ch">Each source belongs to one group. <b>Always shown</b> groups render their badges whenever a score exists. <b>Fallback</b> groups only appear when everything above them is empty, tried top to bottom until one has a score. <b>Drag the handle</b> to reorder groups.</p>
+    <div id="rt-groups"></div>
+
+    <div class="eyebrow">Rating formula</div>
+    <div class="card pad">
+      <div class="grid2">
+        <div class="field"><label>Source of truth</label>
+          <div class="seg wide" id="rt-preset">
+            <button data-val="mdblist" class="on">MDbList score</button>
+            <button data-val="custom">Custom weighted</button>
+          </div>
+          <div class="hint">MDbList's own blended score is recommended.</div>
+        </div>
+        <div class="field"><label>When MDbList score is missing</label>
+          <select id="rt-missing"><option value="average">Average the available sources</option><option value="zero">Treat as none (hide)</option></select>
+        </div>
+      </div>
+      <div id="rt-custom" class="hidden" style="margin-top:8px">
+        <div class="subhead">Per-source weight &amp; minimum votes</div>
+        <div class="hint" style="margin:6px 0 4px">Vote-aware down-weights scores with few votes, so a 9.4 from 30 people doesn't outweigh an 8.1 from 200k.</div>
+        <div id="rt-weights"></div>
+        <label style="display:flex;align-items:center;gap:10px;margin-top:14px;cursor:pointer">
+          <span class="toggle"><input type="checkbox" id="rt-voteaware"><span></span></span>
+          <span style="font-weight:600;font-size:13px">Vote-aware weighting</span>
+        </label>
+      </div>
+      <div class="actions-row"><button class="btn" onclick="saveRatingsConfig()">Save formula &amp; badges</button></div>
+    </div>
+
+    <div class="eyebrow">Library ratings sync</div>
+    <div class="card pad">
+      <div class="grid2">
+        <div class="field"><label>Nightly sync</label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:2px">
+            <span class="toggle"><input type="checkbox" id="rt-sync-enabled"><span></span></span>
+            <span class="muted" style="font-size:13px">Bulk-refresh the whole library's scores each night</span>
+          </label>
+        </div>
+        <div class="field"><label>Run at <span class="opt">(server time)</span></label>
+          <div class="slider-row"><input type="range" id="rt-sync-hour" min="0" max="23" step="1" value="3"><span class="slider-val" id="rt-sync-hour-v">03:00</span></div>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn" onclick="saveSync()">Save schedule</button>
+        <button class="btn ghost" onclick="runAction('library_ratings')">↻ Sync now</button>
+      </div>
+      <div class="muted" id="rt-sync-info" style="font-size:12px;margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- ════════ SETTINGS ════════ -->
+  <section class="tab" id="tab-settings">
+    <div class="page-head">
+      <div><div class="title">Configuration</div><div class="sub">Read-only. Set these via the Unraid template / environment variables. Secrets are masked.</div></div>
+    </div>
+    <div class="card"><table class="tbl"><tbody id="config"></tbody></table></div>
+  </section>
+</main>
+
+<!-- ════════ EDITOR DRAWER ════════ -->
+<div class="scrim-bg" id="scrim-bg" onclick="closeEditor()"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div style="flex:1"><div class="dt" id="ed-title">New section</div><div class="ds" id="ed-sub"></div></div>
+    <button class="iconbtn" onclick="closeEditor()" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-loading hidden" id="ed-loading"><div class="spinner"></div><div class="lbl">Loading…</div></div>
+    <input type="hidden" id="f-id" />
+    <div class="stack">
+      <!-- basics -->
+      <div class="grid2">
+        <div class="field"><label>Title <span class="tip-ic" tabindex="0" id="tip-title"></span></label><input type="text" id="f-title" placeholder="Critically Acclaimed" /></div>
+        <div class="field"><label>Subtitle <span class="opt">(optional)</span> <span class="tip-ic tip-right" tabindex="0" id="tip-subtitle"></span></label><input type="text" id="f-subtitle" placeholder="Top rated in your library" /></div>
+      </div>
+
+      <div class="field"><label>What feeds this section</label>
+        <div class="typecards">
+          <button type="button" class="typecard" data-type="plex_collection" onclick="selectType('plex_collection')">
+            <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M7 7V4h10v3M6 11h12"/></svg></span>
+            <div><div class="tt">Plex Collection</div><div class="td">Mirrors one or more Plex collections, live.</div></div>
+          </button>
+          <button type="button" class="typecard" data-type="filter" onclick="selectType('filter')">
+            <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg></span>
+            <div><div class="tt">Filter</div><div class="td">Build a row from ratings, genres, people &amp; dates.</div></div>
+          </button>
+          <button type="button" class="typecard" data-type="sessions" onclick="selectType('sessions')">
+            <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1"/><circle cx="9" cy="7" r="3.2"/><path d="M22 19v-1a4 4 0 0 0-3-3.8"/></svg></span>
+            <div><div class="tt">Who's Watching</div><div class="td">Who's playing something right now.</div></div>
+          </button>
+          <button type="button" class="typecard" data-type="history" onclick="selectType('history')">
+            <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/></svg></span>
+            <div><div class="tt">Recently Watched</div><div class="td">What the household just finished.</div></div>
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+        <div class="field" style="flex:none"><label>Style</label>
+          <div class="seg" id="f-style">
+            <button data-val="row" class="on">Row shelf</button>
+            <button data-val="hero">Hero / promo</button>
+            <button data-val="bento">Bento</button>
+          </div>
+        </div>
+        <div class="field" style="flex:none"><label>Enabled</label>
+          <label style="display:flex;align-items:center;gap:9px;cursor:pointer;height:38px">
+            <span class="toggle"><input type="checkbox" id="f-enabled" checked><span></span></span>
+            <span class="muted" style="font-size:13px">Show on the Library page</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ── COLLECTION ── -->
+      <div id="grp-collection" class="hidden stack">
+        <div class="field"><label>Library</label><select id="f-collection-lib" onchange="loadCollections(this.value)"></select></div>
+        <div class="field"><label>Collections <span class="opt">(pick one or more, across libraries, to combine)</span></label>
+          <div class="tokenfield">
+            <input class="search" id="f-collection-search" placeholder="Search collections…" oninput="STATE.colShown=CHIP_STEP;renderCollectionChips()" />
+            <div class="chips" id="f-collections-chips"></div>
+          </div>
+        </div>
+        <div class="field"><label>Items shown</label>
+          <div class="slider-row"><input type="range" id="f-col-limit" min="1" max="100" step="1" value="20"><span class="slider-val" id="f-col-limit-v">20</span></div>
+        </div>
+      </div>
+
+      <!-- ── SESSIONS ── -->
+      <div id="grp-sessions" class="hidden stack">
+        <div class="field"><label>People shown <span class="opt">(0 = everyone)</span></label>
+          <div class="slider-row"><input type="range" id="f-sessions-limit" min="0" max="30" step="1" value="0"><span class="slider-val" id="f-sessions-limit-v">All</span></div>
+          <div class="hint">Shows who's playing something: avatar, name, and what they're watching. Hides itself when nobody's watching. Needs Plex.</div>
+        </div>
+      </div>
+
+      <!-- ── HISTORY ── -->
+      <div id="grp-history" class="hidden stack">
+        <div class="grid3">
+          <div class="field"><label>Media</label>
+            <div class="seg wide" id="f-history-media"><button data-val="" class="on">Any</button><button data-val="movie">Films</button><button data-val="show">TV</button></div></div>
+          <div class="field"><label>Order</label>
+            <select id="f-history-sort"><option value="viewedAt:desc">Recently watched</option><option value="viewedAt:asc">Oldest first</option></select></div>
+          <div class="field"><label>Limit</label>
+            <div class="slider-row"><input type="range" id="f-history-limit" min="1" max="100" step="1" value="20"><span class="slider-val" id="f-history-limit-v">20</span></div></div>
+        </div>
+        <div class="hint">Items recently watched by anyone, each labelled with who watched it. Needs Plex.</div>
+      </div>
+
+      <!-- ── FILTER ── -->
+      <div id="grp-filter" class="hidden stack">
+        <div class="field"><label>Libraries <span class="opt">(pick one or more to mix films &amp; shows)</span></label>
+          <div class="tokenfield"><div class="chips" id="f-libraries" style="max-height:none"></div></div>
+          <div class="hint hidden" id="plex-warn"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Media type</label>
+            <div class="seg wide" id="f-media"><button data-val="" class="on">Any</button><button data-val="movie">Films</button><button data-val="show">Shows</button></div></div>
+          <div class="field"><label>Sort by</label>
+            <select id="f-sort">
+              <option value="rating:desc">Rating · high → low</option>
+              <option value="addedAt:desc">Recently added</option>
+              <option value="originallyAvailableAt:desc">Recently released</option>
+              <option value="audienceRating:desc">Audience rating</option>
+              <option value="titleSort:asc">Title · A→Z</option>
+            </select></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Items shown</label>
+            <div class="slider-row"><input type="range" id="f-limit" min="1" max="100" step="1" value="30"><span class="slider-val" id="f-limit-v">30</span></div></div>
+          <div class="field"><label>Minimum rating</label>
+            <div class="slider-row"><input type="range" id="f-rating-min" min="0" max="100" step="1" value="0"><span class="slider-val" id="f-rating-min-v"><small>Off</small></span></div>
+            <div class="hint">Uses the rating formula from the Ratings tab. 0 to 100.</div></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Added within</label>
+            <div class="slider-row"><input type="range" id="f-added" min="0" max="365" step="5" value="0"><span class="slider-val" id="f-added-v"><small>Any time</small></span></div></div>
+          <div class="field"><label>Release year <span class="opt">(from / to)</span></label>
+            <div style="display:flex;gap:10px"><input type="number" id="f-yafter" placeholder="1970" /><input type="number" id="f-ybefore" placeholder="2026" /></div></div>
+        </div>
+
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:9px;cursor:pointer">
+            <span class="toggle"><input type="checkbox" id="f-randomize" onchange="onRandomizeChange()"><span></span></span>
+            <span>Shuffle: a random pick each visit</span></label>
+        </div>
+        <div class="field hidden" id="grp-query-limit"><label>Pool to shuffle from</label>
+          <div class="slider-row"><input type="range" id="f-query-limit" min="1" max="500" step="10" value="100"><span class="slider-val" id="f-query-limit-v">100</span></div>
+          <div class="hint">Fetch this many by the sort/filters, then show a random “items shown” of them.</div></div>
+
+        <div class="subhead">Refine by tags</div>
+        <div id="filter-dims" class="stack"></div>
+
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:9px;cursor:pointer">
+            <span class="toggle"><input type="checkbox" id="f-trending"><span></span></span>
+            <span>Trending only: keep titles in the Discover popular feed</span></label>
+        </div>
+      </div>
+
+      <!-- preview -->
+      <div id="preview-box" class="hidden">
+        <div class="subhead" style="margin-bottom:9px">Preview <span class="muted" id="preview-count" style="font-weight:500;text-transform:none;letter-spacing:0"></span></div>
+        <div class="prev-thumbs" id="preview-thumbs"></div>
+      </div>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <button class="btn subtle" onclick="previewCurrent()">Preview items</button>
+    <div class="spacer"></div>
+    <button class="btn ghost" onclick="closeEditor()">Cancel</button>
+    <button class="btn" onclick="saveSection()">Save section</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   mock.js: demo data + offline API fallback.
+   The app calls api(path, opts). It tries the real backend first;
+   if that fails (e.g. opened as a static file for design review),
+   every call is served from this in-memory mock so the UI is fully
+   explorable. Mirrors the real Poptonium endpoints 1:1.
+   ============================================================ */
+
+// Real app key-art gradients (from data.jsx), used for WYSIWYG posters.
+const POSTER_GRADIENTS = [
+  ["#1b3a4b","#0c5c63"],["#2a1a3e","#7b2d5e"],["#0d1b4c","#3f6fd1"],
+  ["#7a2e0e","#d9762b"],["#14110f","#3a2f2a"],["#3b0d1a","#b23a48"],
+  ["#10303a","#5fb3c9"],["#23123a","#5b3fb0"],["#0e2a22","#2f8f6e"],
+  ["#3a2400","#c79a3a"],["#2b0f12","#8c2f3a"],["#102338","#446fa6"],
+  ["#1d1230","#9a5cc0"],["#08313a","#37a0a8"],["#3a1620","#c25a6e"],
+];
+function gradAt(i){ return POSTER_GRADIENTS[i % POSTER_GRADIENTS.length]; }
+
+const MOCK = {
+  status: {
+    version: "1.0.0",
+    plex:{configured:true, healthy:true}, overseerr:{configured:true, healthy:true},
+    opensubtitles:{configured:true, username:"benja"},
+    plugins:[
+      {id:"example", name:"Example plugin", base_url:"http://example-plugin:8086", enabled:true,
+       status:{configured:true, healthy:true, detail:"Connected"},
+       manifest:{id:"example", name:"Example plugin", icon:'',
+         settings:[
+           {key:"api_token", label:"API token", type:"secret", help:"Demo secret field."},
+           {key:"hidden_categories", label:"Categories to hide", type:"chips", default:["Sample A","Sample B"]},
+         ]}},
+    ],
+    caches:{
+      mdblist_ratings: 4218, ratings_last_sync: Math.floor(Date.now()/1000)-3600*7,
+      popular_items: 120, popular_last_refresh: Math.floor(Date.now()/1000)-3600*19,
+      sections: 6,
+    },
+    jobs:[
+      {id:"library_ratings", name:"Nightly library ratings sync", trigger:"cron · 03:00", next_run:new Date(Date.now()+3600*1000*9).toISOString()},
+      {id:"popular_refresh", name:"Discover popular refresh", trigger:"cron · 04:30", next_run:new Date(Date.now()+3600*1000*10).toISOString()},
+    ],
+    config:{
+      TMDB_API_KEY:"••••••••••3f9a", MDBLIST_API_KEY:"••••••••••7c21",
+      PLEX_URL:"http://10.0.0.4:32400", PLEX_TOKEN:"••••••••••",
+      OVERSEERR_URL:"http://10.0.0.4:5055", OVERSEERR_API_KEY:"••••••••••",
+      MDBLIST_LIBRARY_SYNC:"1", MDBLIST_SYNC_HOUR:"3",
+      OPENSUBTITLES_API_KEY:"••••••••••", OPENSUBTITLES_USERNAME:"benja",
+    },
+  },
+
+  ratings:{
+    display_groups:[
+      {visibility:"always", sources:["tomatoes","popcorn"]},
+      {visibility:"fallback", sources:["imdb"]},
+      {visibility:"fallback", sources:["tmdb","metacritic"]},
+    ],
+    formula:{preset:"mdblist", missing_mdblist:"average", vote_aware:true,
+      weights:{imdb:1, tomatoes:1, popcorn:0.5, tmdb:0.5, metacritic:0.8},
+      min_votes:{imdb:1000, tomatoes:10, popcorn:50, tmdb:200, metacritic:5}},
+  },
+  sync:{enabled:true, hour:3},
+
+  libraries:[
+    {key:"1", title:"Films", type:"movie"},
+    {key:"2", title:"TV Shows", type:"show"},
+    {key:"3", title:"4K Movies", type:"movie"},
+  ],
+  collectionsByLib:{
+    "1":[
+      {key:"c-a24", title:"A24 Originals", count:38},
+      {key:"c-noir", title:"Neo-Noir", count:21},
+      {key:"c-oscar", title:"Best Picture Winners", count:46},
+      {key:"c-summer", title:"Summer Blockbusters", count:64},
+      {key:"c-criterion", title:"Criterion Picks", count:52},
+    ],
+    "2":[
+      {key:"c-prestige", title:"Prestige Drama", count:29},
+      {key:"c-comfort", title:"Comfort Rewatches", count:33},
+      {key:"c-limited", title:"Limited Series", count:41},
+    ],
+    "3":[{key:"c-demo", title:"Dolby Vision Demos", count:12}],
+  },
+  tagsByLib:{
+    "1":{
+      genres:[{id:"g-drama",title:"Drama",count:842},{id:"g-thriller",title:"Thriller",count:511},{id:"g-comedy",title:"Comedy",count:438},{id:"g-scifi",title:"Sci-Fi",count:297},{id:"g-horror",title:"Horror",count:264},{id:"g-doc",title:"Documentary",count:188},{id:"g-romance",title:"Romance",count:221}],
+      directors:[{id:"d-villeneuve",title:"Denis Villeneuve",count:7},{id:"d-nolan",title:"Christopher Nolan",count:11},{id:"d-gerwig",title:"Greta Gerwig",count:4},{id:"d-pta",title:"Paul Thomas Anderson",count:9},{id:"d-fincher",title:"David Fincher",count:10}],
+      actors:[{id:"a-blunt",title:"Emily Blunt",count:14},{id:"a-washington",title:"Denzel Washington",count:19},{id:"a-ronan",title:"Saoirse Ronan",count:12},{id:"a-driver",title:"Adam Driver",count:13}],
+      countries:[{id:"co-us",title:"United States",count:1840},{id:"co-uk",title:"United Kingdom",count:402},{id:"co-fr",title:"France",count:233},{id:"co-jp",title:"Japan",count:151},{id:"co-kr",title:"South Korea",count:98}],
+    },
+    "2":{
+      genres:[{id:"g-drama",title:"Drama",count:312},{id:"g-comedy",title:"Comedy",count:204},{id:"g-crime",title:"Crime",count:121},{id:"g-scifi",title:"Sci-Fi",count:88}],
+      directors:[{id:"d-tv1",title:"Vince Gilligan",count:3},{id:"d-tv2",title:"Phoebe Waller-Bridge",count:2}],
+      actors:[{id:"a-tv1",title:"Pedro Pascal",count:6},{id:"a-tv2",title:"Bryan Cranston",count:4}],
+      countries:[{id:"co-us",title:"United States",count:420},{id:"co-uk",title:"United Kingdom",count:140}],
+    },
+    "3":{genres:[{id:"g-action",title:"Action",count:42}],directors:[],actors:[],countries:[{id:"co-us",title:"United States",count:60}]},
+  },
+
+  sections:[
+    {id:1, title:"Spotlight", subtitle:"Hand-picked this week", type:"plex_collection", style:"hero",
+     position:"top", sort_order:0, enabled:true,
+     config:{collection_keys:[{key:"c-criterion",title:"Criterion Picks"}], limit:8}},
+    {id:2, title:"Who's Watching", subtitle:null, type:"sessions", style:"row",
+     position:"top", sort_order:1, enabled:true, config:{limit:0}},
+    {id:3, title:"Critically Acclaimed", subtitle:"90+ across the board", type:"filter", style:"row",
+     position:"after_all", sort_order:2, enabled:true,
+     config:{library_sections:["1","2"], media_type:null, sort:"rating:desc", limit:30, rating_min:90,
+       genres:[], directors:[], actors:[], countries:[], trending:false}},
+    {id:4, title:"Best of {director}", subtitle:"A different auteur each visit", type:"filter", style:"row",
+     position:"after_movies", sort_order:3, enabled:true,
+     config:{library_sections:["1"], sort:"rating:desc", limit:20, rating_min:70, randomize:true,
+       directors:[{id:"d-villeneuve",title:"Denis Villeneuve"},{id:"d-nolan",title:"Christopher Nolan"},{id:"d-pta",title:"Paul Thomas Anderson"}],
+       directors_mode:"random", directors_pick:1, genres:[], actors:[], countries:[]}},
+    {id:5, title:"Recently Watched", subtitle:"Across the household", type:"history", style:"row",
+     position:"after_movies", sort_order:4, enabled:false,
+     config:{media_type:null, sort:"viewedAt:desc", limit:20}},
+    {id:6, title:"Fresh Arrivals", subtitle:"Added in the last 30 days", type:"filter", style:"row",
+     position:"after_shows", sort_order:5, enabled:true,
+     config:{library_sections:["1","2"], sort:"addedAt:desc", limit:40, added_within_days:30,
+       genres:[], directors:[], actors:[], countries:[], trending:false}},
+  ],
+  _nextId:7,
+};
+
+function mockTitlesFor(seed, n){
+  const pool = ["Glass Harbor","Nightcheck","The Salt Path","Polar Index","Vesper","Featherweight","Burnt Orange","Lantern","Drift Season","Quiet Wire","The Understudy","Cold Open","Marrow","Halflight","Sable","Ember & Ash","Northwind","The Long Field","Paper Tigers","Saltwater"];
+  const out=[]; for(let i=0;i<n;i++) out.push({title:pool[(seed*5+i*3)%pool.length], g:gradAt(seed+i)});
+  return out;
+}
+
+// ---- mock router ----
+async function mockApi(path, opts){
+  const method = (opts && opts.method) || "GET";
+  const body = opts && opts.body ? JSON.parse(opts.body) : null;
+  await new Promise(r=>setTimeout(r, 120 + Math.random()*160)); // feel real
+
+  if(path==="/admin/status") return structuredClone(MOCK.status);
+  // Plugin settings (proxied), generic demo.
+  const mPS = path.match(/^\/plugins\/([^/]+)\/plugin\/settings$/);
+  if(mPS){
+    MOCK.pluginSettings = MOCK.pluginSettings || {example:{values:{hidden_categories:["Sample A","Sample B"]}, secrets_set:{api_token:false}}};
+    const cur = MOCK.pluginSettings[mPS[1]] || {values:{}, secrets_set:{}};
+    if(method==="PUT"){
+      if(body && Array.isArray(body.hidden_categories)) cur.values.hidden_categories = body.hidden_categories;
+      if(body && body.api_token) cur.secrets_set.api_token = true;
+      MOCK.pluginSettings[mPS[1]] = cur;
+      return {...cur, detail:"Saved"};
+    }
+    return structuredClone(cur);
+  }
+  // Plugin registry CRUD (demo).
+  if(path==="/plugins" && method==="POST"){ return {id:"demo", name:"Demo plugin", base_url:(body&&body.base_url)||"", enabled:true, manifest:{id:"demo",name:"Demo plugin",settings:[]}}; }
+  const mP = path.match(/^\/plugins\/([^/]+)(\/refresh)?$/);
+  if(mP && (method==="PUT"||method==="DELETE"||method==="POST")){ return {status:"ok", id:mP[1]}; }
+  if(path==="/ratings/config") {
+    if(method==="PUT"){ MOCK.ratings = body; return structuredClone(MOCK.ratings); }
+    return structuredClone(MOCK.ratings);
+  }
+  if(path==="/admin/ratings/sync"){
+    if(method==="PUT"){ MOCK.sync = body; return structuredClone(MOCK.sync); }
+    return structuredClone(MOCK.sync);
+  }
+  if(path==="/sections" && method==="GET")
+    return structuredClone(MOCK.sections).sort((a,b)=>a.sort_order-b.sort_order);
+  if(path==="/sections" && method==="POST"){
+    const s = {...body, id:MOCK._nextId++}; MOCK.sections.push(s); return structuredClone(s);
+  }
+  if(path==="/sections/reorder"){
+    body.forEach(it=>{ const s=MOCK.sections.find(x=>x.id===it.id); if(s){ s.sort_order=it.sort_order; if(it.position) s.position=it.position; } });
+    return {status:"ok"};
+  }
+  const mSec = path.match(/^\/sections\/(\d+)$/);
+  if(mSec){
+    const id=Number(mSec[1]); const idx=MOCK.sections.findIndex(s=>s.id===id);
+    if(method==="DELETE"){ if(idx>=0) MOCK.sections.splice(idx,1); return {status:"ok"}; }
+    if(method==="PUT"){ if(idx>=0) MOCK.sections[idx]={...MOCK.sections[idx], ...body, id}; return structuredClone(MOCK.sections[idx]); }
+  }
+  const mPrev = path.match(/^\/sections\/(\d+)\/preview$/);
+  if(mPrev){
+    const id=Number(mPrev[1]); const s=MOCK.sections.find(x=>x.id===id)||{};
+    const n = (s.config&&s.config.limit) || 12;
+    return {items: mockTitlesFor(id, Math.min(n,16)).map((t,i)=>({title:t.title, g:t.g}))};
+  }
+  if(path==="/admin/plex/sections") return {sections:structuredClone(MOCK.libraries)};
+  const mCol = path.match(/^\/admin\/plex\/collections\?section=(.+)$/);
+  if(mCol) return {collections:structuredClone(MOCK.collectionsByLib[decodeURIComponent(mCol[1])]||[])};
+  const mTag = path.match(/^\/admin\/plex\/tags\?section=(.+)$/);
+  if(mTag) return structuredClone(MOCK.tagsByLib[decodeURIComponent(mTag[1])]||{genres:[],directors:[],actors:[],countries:[]});
+  if(path.startsWith("/admin/cron/")) return {status:"started"};
+  if(path.startsWith("/admin/cache/clear")) return {status:"cleared"};
+
+  return {};
+}
+
+window.MOCK_GRADIENTS = POSTER_GRADIENTS;
+window.gradAt = gradAt;
+window.mockApi = mockApi;
+window.mockTitlesFor = mockTitlesFor;
+
+</script>
+<script>
+/* ============================================================
+   app.js: Poptonium admin (redesign)
+   Vanilla, dependency-free. Talks to the real backend, falls back
+   to mock.js for offline design review.
+   ============================================================ */
+
+const API_BASE = location.pathname.replace(/\/admin\/?$/, "");
+const $ = (id) => document.getElementById(id);
+let DEMO = false; // flips true the first time a real call fails
+
+/* ---------- tiny icon set (feather-ish) ---------- */
+const I = {
+  grip:'<circle cx="9" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="18" r="1.6"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  edit:'<path d="M11 4H4v16h16v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/>',
+  copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+  film:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 8h4M17 8h4M3 16h4M17 16h4"/>',
+  filter:'<path d="M3 5h18l-7 8v6l-4-2v-4z"/>',
+  collection:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M7 7V4h10v3M6 11h12"/>',
+  users:'<path d="M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1"/><circle cx="9" cy="7" r="3.2"/><path d="M22 19v-1a4 4 0 0 0-3-3.8"/><path d="M16 3.2A3.2 3.2 0 0 1 16 9.6"/>',
+  history:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/>',
+  layers:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
+  star:'<path d="M12 3l2.7 6 6.3.5-4.8 4 1.5 6.2L12 16.6 6.3 19.7 7.8 13.5 3 9.5l6.3-.5z"/>',
+  trending:'<path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  zap:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  refresh:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/>',
+  broom:'<path d="M19 5l-7 7M14 7l3 3M8 13l-3 6 6-3 5-5-3-3z"/>',
+  sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  database:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+  gear:'<circle cx="12" cy="12" r="3.2"/><path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1l-.4-2.5h-4l-.4 2.5a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4L4.6 11a7.8 7.8 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 1.7-1l2.4 1 2-3.4z"/>',
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  check:'<path d="M20 6L9 17l-5-5"/>',
+  x:'<path d="M18 6L6 18M6 6l12 12"/>',
+  chevron:'<path d="M9 6l6 6-6 6"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+  calendar:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>',
+  globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/>',
+  plug:'<path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0zM12 16v6"/>',
+  sub:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h6M15 15h2M7 11h2M11 11h6"/>',
+  layout:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>',
+};
+function icon(name, cls){ return `<svg class="${cls||''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${I[name]||''}</svg>`; }
+// Wrap an arbitrary inner-SVG string (from a plugin manifest's `icon`) in our chrome.
+function rawIcon(inner, cls){ return `<svg class="${cls||''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${inner||I.plug}</svg>`; }
+
+/* ---------- api ---------- */
+function csrfToken(){
+  const m = document.cookie.match(/(?:^|;\s*)bf_admin_csrf=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : "";
+}
+async function api(path, opts){
+  opts = opts || {};
+  // Echo the CSRF cookie back in a header on state-changing requests (the server
+  // double-submits it against the cookie for cookie-authenticated callers).
+  const method = (opts.method || "GET").toUpperCase();
+  if(!["GET","HEAD","OPTIONS"].includes(method)){
+    opts.headers = Object.assign({}, opts.headers, {"X-CSRF-Token": csrfToken()});
+  }
+  if(!DEMO){
+    let r;
+    try{
+      r = await fetch(API_BASE + path, Object.assign({credentials:"same-origin"}, opts));
+    }catch(e){
+      // network failure (backend down / opened as a static file) → demo mode
+      DEMO = true; showDemoBanner();
+      return mockApi(path, opts);
+    }
+    // A 401 may mean our admin session expired, OR that this specific endpoint
+    // has its own auth (the plugin proxy wants a Plex token the admin UI doesn't
+    // carry). Only drop back to the login gate if the session is truly invalid —
+    // otherwise surface it as a normal request error.
+    if(r.status === 401){
+      if(await sessionExpired()){ requireLogin(); throw new Error("Authentication required"); }
+      throw new Error("Not authorized for this request");
+    }
+    if(!r.ok){ let t=""; try{t=(await r.json()).detail||"";}catch(e){} throw new Error(t||`${r.status} ${r.statusText}`); }
+    const ct = r.headers.get("content-type")||"";
+    return ct.includes("json") ? r.json() : r.text();
+  }
+  return mockApi(path, opts);
+}
+function showDemoBanner(){
+  if($("demo-banner")) return;
+  const b=document.createElement("div"); b.id="demo-banner"; b.className="demo-banner";
+  b.innerHTML = icon("info")+" Demo data. This is a design preview; connect to a running Poptonium backend for live data.";
+  document.body.insertBefore(b, document.body.firstChild);
+}
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg, err){
+  const t=$("toast");
+  t.innerHTML = (err?icon("x"):icon("check")) + `<span>${esc(msg)}</span>`;
+  t.className = "toast show" + (err?" err":"");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.className="toast", 2400);
+}
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function fmtTime(epoch){ if(!epoch) return "never"; const d=Date.now()/1000-epoch; if(d<60) return "just now"; if(d<3600) return Math.round(d/60)+"m ago"; if(d<86400) return Math.round(d/3600)+"h ago"; return Math.round(d/86400)+"d ago"; }
+function fmtNext(iso){ if(!iso) return "-"; const d=(new Date(iso)-Date.now())/1000; if(d<0) return "now"; if(d<3600) return "in "+Math.round(d/60)+"m"; if(d<86400) return "in "+Math.round(d/3600)+"h"; return "in "+Math.round(d/86400)+"d"; }
+
+/* ---------- theme ---------- */
+const THEME_DOTS = {daylight:"#0F7B62", aurora:"#5E7CFF", vivid:"#FF5C49"};
+function setTheme(id){
+  document.documentElement.dataset.theme = id;
+  try{ localStorage.setItem("tc-admin-theme", id); }catch(e){}
+  document.querySelectorAll(".themeswitch button").forEach(b=>b.classList.toggle("active", b.dataset.theme===id));
+}
+
+/* ---------- tabs ---------- */
+function switchTab(name){
+  document.querySelectorAll(".appbar nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===name));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.id==="tab-"+name));
+  if(name==="dashboard") loadStatus();
+  if(name==="integrations") loadIntegrations();
+  if(name==="sections") loadSections();
+  if(name==="ratings") loadRatings();
+  try{ history.replaceState(null,"",`#${name}`); }catch(e){}
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+async function loadStatus(){
+  let s; try{ s=await api("/admin/status"); }catch(e){ toast("Status failed",true); return; }
+  $("ver").textContent = "v"+s.version;
+
+  const integ=[
+    ["Plex",s.plex.configured,s.plex.healthy],
+    ["Overseerr",s.overseerr.configured,s.overseerr.healthy],
+    ["OpenSubtitles",s.opensubtitles.configured,null],
+    ...(s.plugins||[]).map(p=>[p.name, p.enabled, p.status&&p.status.healthy]),
+  ];
+  $("integrations").innerHTML = integ.map(([n,on,healthy])=>{
+    let cls="", st="Not configured";
+    if(on){
+      if(healthy===false){ cls="down"; st="Unavailable"; }
+      else { cls="on"; st="Connected"; }   // healthy true or null(no probe)
+    }
+    return `<div class="integ ${cls}"><span class="led"></span>
+      <div><div class="nm">${n}</div><div class="st">${st}</div></div></div>`;
+  }).join("");
+
+  const c=s.caches;
+  $("cache-cards").innerHTML = [
+    {n:c.mdblist_ratings.toLocaleString(), l:"Rated titles", s:"synced "+fmtTime(c.ratings_last_sync), ic:"star"},
+    {n:c.popular_items, l:"Popular items", s:"refreshed "+fmtTime(c.popular_last_refresh), ic:"trending"},
+    {n:c.sections, l:"Custom sections", s:"on the Library page", ic:"layers"},
+    {n:(s.plugins?s.plugins.length:0), l:"Plugins", s:(s.plugins||[]).filter(p=>p.enabled).length+" enabled", ic:"plug"},
+  ].map(x=>`<div class="card stat"><span class="ico">${icon(x.ic)}</span><div class="n">${x.n}</div><div class="l">${x.l}</div><div class="s">${esc(x.s)}</div></div>`).join("");
+
+  $("jobs").innerHTML = (s.jobs.length? s.jobs.map(j=>`
+    <tr><td><div style="font-weight:650">${esc(j.name||j.id)}</div><div class="muted" style="font-size:12px;margin-top:2px">${esc(j.trigger)}</div></td>
+    <td class="muted">${fmtNext(j.next_run)}</td>
+    <td style="text-align:right"><button class="btn ghost sm" onclick="runAction('${j.id}')">${icon("refresh")} Run now</button></td></tr>`).join("")
+    : `<tr><td class="muted">No scheduled jobs</td></tr>`);
+
+  const cfg=s.config;
+  $("config").innerHTML = Object.entries(cfg).map(([k,v])=>`
+    <tr><td class="k">${esc(k)}</td><td>${v? `<span class="mono" style="font-size:12.5px">${esc(v)}</span>` : '<span class="muted">unset</span>'}</td></tr>`).join("");
+}
+async function runAction(job){ try{ await api(`/admin/cron/${job}/run`,{method:"POST"}); toast("Started: "+job); setTimeout(loadStatus,1400);}catch(e){toast(e.message,true);} }
+async function clearCache(which){ if(!confirm("Clear the "+which+" cache?")) return; try{ await api(`/admin/cache/clear?which=${which}`,{method:"POST"}); toast("Cleared "+which+" cache"); setTimeout(loadStatus,600);}catch(e){toast(e.message,true);} }
+/* ============================================================
+   INTEGRATIONS
+   ============================================================ */
+// Core (built-in) integrations: read-only health, no settings.
+const INTEG_DEFS = [
+  {key:"plex",         name:"Plex",          icon:"film"},
+  {key:"overseerr",    name:"Overseerr",     icon:"search"},
+  {key:"opensubtitles",name:"OpenSubtitles", icon:"sub"},
+];
+// Registered plugins, indexed by id, + their loaded settings.
+let PLUGINS_BY_ID = {};
+let PLUGIN_SETTINGS = {};   // pid -> {values:{}, secrets_set:{}}
+
+async function loadIntegrations(){
+  let s; try{ s=await api("/admin/status"); }catch(e){ toast("Status failed",true); return; }
+
+  const core = INTEG_DEFS.map(d=>{
+    const st = s[d.key] || {};
+    const state = !st.configured ? "" : (st.healthy===false ? "down" : "on");
+    const label = !st.configured ? "Not configured" : (st.healthy===false ? "Unavailable" : "Connected");
+    const url = st.url ? `<div class="muted" style="font-size:12px;margin-top:2px">${esc(st.url)}</div>` : "";
+    return `<div class="card integ-card">
+      <div class="integ-card-head">
+        <span class="ico">${icon(d.icon)}</span>
+        <div style="flex:1"><div class="nm">${d.name}</div>${url}</div>
+        <span class="integ ${state}"><span class="led"></span><span class="st">${label}</span></span>
+      </div></div>`;
+  }).join("");
+
+  const plugins = s.plugins || [];
+  PLUGINS_BY_ID = {};
+  plugins.forEach(p=>{ PLUGINS_BY_ID[p.id]=p; });
+
+  const addCard = `<div class="card plugin-add" style="margin-bottom:14px">
+       <div class="nm"><span class="ico">${icon("plug")}</span>Add a plugin</div>
+       <div class="ph">Enter the base URL of a plugin sidecar. It must serve <span class="mono">/plugin/manifest</span>. Example: <span class="mono">http://my-plugin:8086</span></div>
+       <div class="row">
+         <input class="search" id="plugin-add-url" placeholder="http://host:port" autocomplete="off" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addPlugin();}">
+         <button class="btn" onclick="addPlugin()">Add plugin</button>
+       </div>
+     </div>`;
+
+  $("integ-list").innerHTML = core
+    + `<div class="eyebrow" style="margin-top:26px">Plugins</div>`
+    + addCard
+    + (plugins.length
+        ? plugins.map(pluginCardHtml).join("")
+        : `<div class="plugin-empty">No plugins registered yet. Add one by its base URL above.</div>`);
+
+  // Populate each enabled plugin's settings form.
+  plugins.forEach(p=>{ if(p.enabled && (p.manifest.settings||[]).length) loadPluginSettings(p.id); });
+}
+
+function pluginCardHtml(p){
+  const st = p.status || {};
+  const state = !p.enabled ? "" : (st.healthy===false ? "down" : (st.healthy ? "on" : ""));
+  const label = !p.enabled ? "Disabled" : (st.healthy===false ? "Unavailable" : (st.healthy ? "Connected" : "Unknown"));
+  const detail = st.detail ? `<div class="muted" style="font-size:12px;margin-top:2px">${esc(st.detail)}</div>` : "";
+  const settings = (p.manifest && p.manifest.settings) || [];
+  const body = !p.enabled
+    ? `<div class="muted" style="font-size:12.5px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">Enable this plugin to configure it.</div>`
+    : (settings.length
+        ? `<div class="integ-settings" style="margin-top:6px">
+             ${settings.map(f=>pluginFieldHtml(p.id,f)).join("")}
+             <div class="actions-row" style="margin-top:12px"><button class="btn sm" onclick="savePlugin('${esc(p.id)}')">Save settings</button></div>
+           </div>`
+        : `<div class="muted" style="font-size:12.5px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">This plugin has no settings.</div>`);
+  return `<div class="card integ-card" data-plugin="${esc(p.id)}">
+    <div class="integ-card-head">
+      <span class="ico">${rawIcon(p.manifest && p.manifest.icon)}</span>
+      <div style="flex:1"><div class="nm">${esc(p.name)}</div>
+        <div class="muted" style="font-size:12px;margin-top:2px">${esc(p.base_url)}</div>${detail}</div>
+      <span class="integ ${state}"><span class="led"></span><span class="st">${label}</span></span>
+    </div>
+    <div class="plug-actions">
+      <label class="toglabel">
+        <span class="toggle"><input type="checkbox" ${p.enabled?"checked":""} onchange="togglePlugin('${esc(p.id)}',this.checked)"><span></span></span>
+        <span class="muted" style="font-size:13px">Enabled</span>
+      </label>
+      <button class="btn ghost sm" onclick="refreshPlugin('${esc(p.id)}')">${icon("refresh")} Refresh</button>
+      <button class="btn ghost sm" onclick="removePlugin('${esc(p.id)}')">${icon("x")} Remove</button>
+    </div>
+    ${body}</div>`;
+}
+
+function pluginFieldHtml(pid,f){
+  const fid = `pf-${pid}-${f.key}`;
+  const help = f.help ? `<div class="muted" style="font-size:12px;margin:3px 0 8px;max-width:74ch">${esc(f.help)}</div>` : "";
+  let input;
+  if(f.type==="chips"){
+    input = `<div class="tokenfield">
+      <div class="chips" id="pf-chips-${pid}-${f.key}" style="max-height:none"></div>
+      <input class="search" id="pf-chipsin-${pid}-${f.key}" placeholder="Add and press Enter…" onkeydown="pluginChipKey(event,'${pid}','${f.key}')" autocomplete="off">
+    </div>`;
+  } else if(f.type==="bool"){
+    input = `<label style="display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" id="${fid}"> Enabled</label>`;
+  } else if(f.type==="number"){
+    input = `<input class="search" type="number" id="${fid}">`;
+  } else {
+    input = `<input class="search" type="${f.type==='secret'?'password':'text'}" id="${fid}" autocomplete="off">`;
+  }
+  return `<div class="set-block" style="margin-top:12px"><div class="set-label">${esc(f.label||f.key)}</div>${help}${input}</div>`;
+}
+
+async function loadPluginSettings(pid){
+  try{
+    const r = await api(`/plugins/${pid}/plugin/settings`);
+    PLUGIN_SETTINGS[pid] = {values:r.values||{}, secrets_set:r.secrets_set||{}};
+    applyPluginSettings(pid);
+  }catch(e){ /* leave blank */ }
+}
+
+function applyPluginSettings(pid){
+  const p = PLUGINS_BY_ID[pid]; if(!p) return;
+  const ss = PLUGIN_SETTINGS[pid] || {values:{}, secrets_set:{}};
+  (p.manifest.settings||[]).forEach(f=>{
+    const el = $(`pf-${pid}-${f.key}`);
+    if(f.type==="chips"){ renderPluginChips(pid,f.key); }
+    else if(f.type==="secret"){ if(el) el.placeholder = ss.secrets_set[f.key] ? "•••••••• set, leave blank to keep" : "not set"; }
+    else if(f.type==="bool"){ if(el) el.checked = !!(ss.values[f.key] ?? f.default); }
+    else if(el){ const v = ss.values[f.key] ?? f.default ?? ""; el.value = v; }
+  });
+}
+
+function pluginChips(pid,key){
+  const ss = PLUGIN_SETTINGS[pid] || (PLUGIN_SETTINGS[pid]={values:{},secrets_set:{}});
+  if(!Array.isArray(ss.values[key])){
+    const p = PLUGINS_BY_ID[pid];
+    const f = p && (p.manifest.settings||[]).find(x=>x.key===key);
+    ss.values[key] = (f && Array.isArray(f.default)) ? [...f.default] : [];
+  }
+  return ss.values[key];
+}
+function renderPluginChips(pid,key){
+  const box = $(`pf-chips-${pid}-${key}`); if(!box) return;
+  const arr = pluginChips(pid,key);
+  box.innerHTML = arr.length
+    ? arr.map((c,i)=>`<span class="chip sel">${esc(c)}<span class="chip-x" onclick="removePluginChip('${pid}','${key}',${i})" title="Remove">×</span></span>`).join("")
+    : `<span class="muted" style="font-size:12px;padding:4px 2px">Empty.</span>`;
+}
+function pluginChipKey(e,pid,key){
+  if(e.key!=="Enter") return; e.preventDefault();
+  const v=e.target.value.trim(); const arr=pluginChips(pid,key);
+  if(v && !arr.some(x=>x.toLowerCase()===v.toLowerCase())){ arr.push(v); e.target.value=""; renderPluginChips(pid,key); }
+  else e.target.value="";
+}
+function removePluginChip(pid,key,i){ pluginChips(pid,key).splice(i,1); renderPluginChips(pid,key); }
+
+async function savePlugin(pid){
+  const p = PLUGINS_BY_ID[pid]; if(!p) return;
+  const body = {};
+  (p.manifest.settings||[]).forEach(f=>{
+    const el = $(`pf-${pid}-${f.key}`);
+    if(f.type==="chips"){ body[f.key] = pluginChips(pid,f.key); }
+    else if(f.type==="secret"){ if(el && el.value.trim()) body[f.key] = el.value.trim(); }
+    else if(f.type==="bool"){ if(el) body[f.key] = el.checked; }
+    else if(f.type==="number"){ if(el && el.value!=="") body[f.key] = Number(el.value); }
+    else if(el){ body[f.key] = el.value; }
+  });
+  try{
+    const r = await api(`/plugins/${pid}/plugin/settings`,{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+    toast(r && r.detail ? r.detail : "Saved");
+    loadPluginSettings(pid);
+  }catch(e){ toast(e.message,true); }
+}
+
+async function addPlugin(){
+  const el = $("plugin-add-url"); const url = (el.value||"").trim();
+  if(!url){ toast("Enter a base URL",true); return; }
+  try{ await api("/plugins",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({base_url:url})});
+    el.value=""; toast("Plugin added"); loadIntegrations();
+  }catch(e){ toast(e.message,true); }
+}
+async function togglePlugin(pid,enabled){
+  try{ await api(`/plugins/${pid}`,{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({enabled})});
+    loadIntegrations();
+  }catch(e){ toast(e.message,true); }
+}
+async function removePlugin(pid){
+  if(!confirm("Remove plugin “"+pid+"”? Its own data is untouched; you can re-add it later.")) return;
+  try{ await api(`/plugins/${pid}`,{method:"DELETE"}); toast("Removed"); loadIntegrations(); }catch(e){ toast(e.message,true); }
+}
+async function refreshPlugin(pid){
+  try{ await api(`/plugins/${pid}/refresh`,{method:"POST"}); toast("Manifest refreshed"); loadIntegrations(); }catch(e){ toast(e.message,true); }
+}
+
+window.runAction=runAction; window.clearCache=clearCache; window.switchTab=switchTab; window.setTheme=setTheme;
+window.loadIntegrations=loadIntegrations;
+window.addPlugin=addPlugin; window.togglePlugin=togglePlugin; window.removePlugin=removePlugin;
+window.refreshPlugin=refreshPlugin; window.savePlugin=savePlugin;
+window.pluginChipKey=pluginChipKey; window.removePluginChip=removePluginChip;
+
+</script>
+<script>
+/* ============================================================
+   app-sections.js: WYSIWYG layout board + section editor.
+   The board mirrors the app's Library page top→bottom. Built-in
+   shelves (All / Films / TV Shows) are fixed anchors; custom
+   sections are draggable blocks that slot into the gaps. Their
+   placement (`position`) and order (`sort_order`) persist on drop.
+   ============================================================ */
+
+const DIMS = ["genres","directors","actors","countries"];
+const DIM_LABEL = {genres:"Genres", directors:"Directors", actors:"Actors", countries:"Country / origin"};
+const TYPE_META = {
+  plex_collection:{label:"Collection", icon:"collection"},
+  filter:{label:"Filter", icon:"filter"},
+  sessions:{label:"Who's Watching", icon:"users"},
+  history:{label:"Recently Watched", icon:"history"},
+};
+// Canonical top→bottom order of the four placement zones.
+const ZONES = [
+  {pos:"top",          before:"All"},
+  {pos:"after_all",    before:"Films"},
+  {pos:"after_movies", before:"TV Shows"},
+  {pos:"after_shows",  before:null},
+];
+const ANCHORS = [
+  {after:"top",          name:"All",      icon:"grid"},
+  {after:"after_all",    name:"Films",    icon:"film"},
+  {after:"after_movies", name:"TV Shows", icon:"layers"},
+];
+
+const STATE = {
+  sections:[], libraries:[], tagsByLib:{}, collectionsByLib:{}, colByKey:{},
+  selectedLibs:new Set(), selectedCollections:new Map(),
+  selected:{genres:new Set(),directors:new Set(),actors:new Set(),countries:new Set()},
+  collectionLib:"",
+  // How many (unselected) chips are currently revealed per list; grows on scroll.
+  tagShown:{genres:0,directors:0,actors:0,countries:0}, colShown:0,
+};
+// Chips revealed initially / added each time you scroll to the end of a chip list.
+const CHIP_STEP = 50;
+let dragId = null;
+
+/* ---------- load + render board ---------- */
+async function loadSections(){
+  try{ STATE.sections = await api("/sections"); }
+  catch(e){ toast("Load sections failed",true); return; }
+  renderBoard();
+}
+function sectionsIn(pos){
+  return STATE.sections.filter(s=>(s.position||"top")===pos).sort((a,b)=>a.sort_order-b.sort_order);
+}
+function renderBoard(){
+  const host = $("board-device");
+  let html = `<div class="board-statusbar"><span class="lib">Library</span><span>WYSIWYG · top → bottom</span></div>`;
+  ZONES.forEach((z,i)=>{
+    html += renderZone(z.pos);
+    const anchor = ANCHORS.find(a=>a.after===z.pos);
+    if(anchor) html += renderAnchor(anchor);
+  });
+  host.innerHTML = html;
+  wireDnD();
+  updateCount();
+}
+function updateCount(){
+  const n = STATE.sections.length;
+  $("sec-count").textContent = n;
+  $("sec-count").classList.toggle("hidden", !n);
+}
+function renderZone(pos){
+  const items = sectionsIn(pos);
+  const blocks = items.map(renderBlock).join("");
+  const tip = `<div class="zone-tip">Drop a section here · ${zoneDesc(pos)}</div>`;
+  return `<div class="zone ${items.length?'':'empty'}" data-pos="${pos}">${blocks || tip}</div>`;
+}
+function zoneDesc(pos){ return {top:"above All", after_all:"below All", after_movies:"below Films", after_shows:"below TV Shows"}[pos]; }
+function renderAnchor(a){
+  return `<div class="anchor">
+    <div class="ah"><span class="sys">${icon(a.icon)}</span><span class="nm">${a.name}</span></div>
+    ${renderPosterStrip(("anchor-"+a.name).length+a.name.length, 8, false)}
+  </div>`;
+}
+
+/* ---------- WYSIWYG previews ---------- */
+function gradStyle(g){ return `background:linear-gradient(150deg, ${g[0]}, ${g[1]})`; }
+function renderPosterStrip(seed, n, wide){
+  let cells="";
+  for(let i=0;i<n;i++){ const g=gradAt(seed+i*2); cells+=`<div class="mini-poster ${wide?'wide':''}" style="${gradStyle(g)}"><span class="sheen"></span></div>`; }
+  return `<div class="shelf-prev"><div class="strip">${cells}</div></div>`;
+}
+function renderAvatars(seed, n){
+  const names=["MV","IC","LO","TR","SK","NB"]; let cells="";
+  for(let i=0;i<n;i++){ const g=gradAt(seed+i*3); cells+=`<div style="width:52px;flex:none;display:flex;flex-direction:column;align-items:center;gap:5px">
+    <div style="width:48px;height:48px;border-radius:50%;${gradStyle(g)};display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px;box-shadow:var(--shadow-sm)">${names[i%names.length]}</div>
+    <div style="width:42px;height:5px;border-radius:3px;background:var(--bg3)"></div></div>`; }
+  return `<div class="shelf-prev"><div class="strip" style="gap:10px">${cells}</div></div>`;
+}
+function renderHero(s){
+  const g=gradAt(s.id*3+1);
+  return `<div class="hero-prev"><div class="frame" style="${gradStyle(g)}">
+    <div class="scrim"></div>
+    <div class="cap"><div class="ht">${esc(s.title||"Hero")}</div>${s.subtitle?`<div class="hs">${esc(s.subtitle)}</div>`:""}</div>
+  </div></div>`;
+}
+function renderBento(s){
+  const sq=(i)=>`<div class="mini-poster" style="width:34px;height:34px;${gradStyle(gradAt(s.id*5+i))}"><span class="sheen"></span></div>`;
+  return `<div class="shelf-prev"><div style="display:flex;gap:6px;align-items:flex-start">
+    <div class="mini-poster" style="width:50px;height:74px;${gradStyle(gradAt(s.id*5))}"><span class="sheen"></span></div>
+    <div style="display:grid;grid-template-columns:34px 34px;grid-auto-rows:34px;gap:6px">${sq(1)}${sq(2)}${sq(3)}${sq(4)}</div>
+  </div></div>`;
+}
+function blockPreview(s){
+  if(s.style==="hero") return renderHero(s);
+  if(s.style==="bento") return renderBento(s);
+  if(s.type==="sessions") return renderAvatars(s.id*4, 6);
+  return renderPosterStrip(s.id*5, 7, false);
+}
+
+/* ---------- a custom section block ---------- */
+function renderBlock(s){
+  const tm = TYPE_META[s.type] || TYPE_META.filter;
+  const tags = [
+    `<span class="pill type">${icon(tm.icon)} ${tm.label}</span>`,
+    s.style==="hero" ? `<span class="pill hero">Hero</span>` : s.style==="bento" ? `<span class="pill type">Bento</span>` : `<span class="pill">Row</span>`,
+    (s.config&&s.config.randomize) ? `<span class="pill">${icon("refresh")} Randomized</span>` : "",
+  ].filter(Boolean).join("");
+  return `<div class="block ${s.enabled?'':'disabled'}" data-id="${s.id}">
+    <div class="grip" title="Drag to reorder">${icon("grip")}</div>
+    <div class="body">
+      <div class="top">
+        <div class="heading">
+          <div class="t">${esc(s.title)}${s.enabled?'':' <span class="pill off">disabled</span>'}</div>
+          ${s.subtitle?`<div class="s">${esc(s.subtitle)}</div>`:""}
+        </div>
+        <div class="controls">
+          <div class="rowacts">
+            <button class="iconbtn" title="Edit" onclick="editSection(${s.id})">${icon("edit")}</button>
+            <button class="iconbtn" title="Duplicate" onclick="duplicateSection(${s.id})">${icon("copy")}</button>
+            <button class="iconbtn" title="Delete" onclick="delSection(${s.id})">${icon("trash")}</button>
+          </div>
+          <label class="toggle" title="${s.enabled?'Enabled':'Disabled'}"><input type="checkbox" ${s.enabled?'checked':''} onchange="toggleEnabled(${s.id},this.checked)"><span></span></label>
+        </div>
+      </div>
+      <div class="tags">${tags}</div>
+      ${blockPreview(s)}
+    </div>
+  </div>`;
+}
+
+/* ---------- drag & drop (pointer-based: smooth, works on touch + mouse) ---------- */
+let _dragClone=null, _dragOffX=0, _dragOffY=0, _autoRAF=null;
+function wireDnD(){
+  document.querySelectorAll(".board .block").forEach(el=>{
+    const grip = el.querySelector(".grip");
+    if(!grip) return;
+    grip.style.touchAction = "none";   // let us own the gesture (no page scroll)
+    grip.addEventListener("pointerdown", e=>beginDrag(e, el));
+  });
+}
+function beginDrag(e, el){
+  if(e.button>0) return;               // primary button / touch only
+  e.preventDefault();
+  dragId = Number(el.dataset.id);
+  el.classList.add("dragging");
+  const r = el.getBoundingClientRect();
+  _dragOffX = e.clientX - r.left; _dragOffY = e.clientY - r.top;
+  _dragClone = el.cloneNode(true);
+  _dragClone.classList.add("drag-clone");
+  Object.assign(_dragClone.style, {width:r.width+"px", left:r.left+"px", top:r.top+"px"});
+  document.body.appendChild(_dragClone);
+  document.body.classList.add("dragging-active");
+  window.addEventListener("pointermove", moveDrag);
+  window.addEventListener("pointerup", endDrag, {once:true});
+  window.addEventListener("pointercancel", endDrag, {once:true});
+}
+function moveDrag(e){
+  if(_dragClone){ _dragClone.style.left=(e.clientX-_dragOffX)+"px"; _dragClone.style.top=(e.clientY-_dragOffY)+"px"; }
+  const zone = zoneAtPoint(e.clientX, e.clientY);
+  document.querySelectorAll(".zone.dragover").forEach(z=>{ if(z!==zone) z.classList.remove("dragover"); });
+  if(zone) placeDropLine(zone, dragAfter(zone, e.clientY)); else clearDropLines();
+  autoScroll(e.clientY);
+}
+function zoneAtPoint(x,y){           // clone has pointer-events:none, so it's transparent here
+  const el = document.elementFromPoint(x,y);
+  return el ? el.closest(".zone") : null;
+}
+function autoScroll(y){              // nudge the page when dragging near top/bottom edges
+  cancelAnimationFrame(_autoRAF);
+  const m=80, H=window.innerHeight; let d=0;
+  if(y<m) d=-14*(1-y/m); else if(y>H-m) d=14*(1-(H-y)/m);
+  if(d){ const step=()=>{ window.scrollBy(0,d); _autoRAF=requestAnimationFrame(step); }; _autoRAF=requestAnimationFrame(step); }
+}
+function endDrag(e){
+  window.removeEventListener("pointermove", moveDrag);
+  cancelAnimationFrame(_autoRAF);
+  document.body.classList.remove("dragging-active");
+  const zone = zoneAtPoint(e.clientX, e.clientY);
+  if(_dragClone){ _dragClone.remove(); _dragClone=null; }
+  document.querySelectorAll(".block.dragging").forEach(b=>b.classList.remove("dragging"));
+  if(zone && dragId!=null){
+    const after = dragAfter(zone, e.clientY);
+    commitDrop(zone.dataset.pos, after ? Number(after.dataset.id) : null);
+  } else { clearDropLines(); dragId=null; }
+}
+function dragAfter(zone, y){
+  const els=[...zone.querySelectorAll(".block:not(.dragging)")];
+  let best={off:-Infinity, el:null};
+  for(const el of els){ const b=el.getBoundingClientRect(); const off=y-b.top-b.height/2; if(off<0 && off>best.off) best={off, el}; }
+  return best.el;
+}
+function clearDropLines(){ document.querySelectorAll(".drop-line").forEach(l=>l.remove()); document.querySelectorAll(".zone.dragover").forEach(z=>z.classList.remove("dragover")); }
+function placeDropLine(zone, beforeEl){
+  clearDropLines(); zone.classList.add("dragover");
+  const line=document.createElement("div"); line.className="drop-line";
+  if(beforeEl) zone.insertBefore(line, beforeEl);
+  else { const tip=zone.querySelector(".zone-tip"); if(tip) zone.insertBefore(line,tip); else zone.appendChild(line); }
+}
+async function commitDrop(pos, afterId){
+  clearDropLines();
+  if(dragId==null) return;
+  const moved = STATE.sections.find(s=>s.id===dragId); if(!moved) return;
+  const samePos = (moved.position||"top")===pos;
+
+  // ids currently in target zone (sorted), excluding the moved one
+  let ids = sectionsIn(pos).map(s=>s.id).filter(id=>id!==dragId);
+  const idx = afterId!=null ? ids.indexOf(afterId) : ids.length;
+  ids.splice(idx<0?ids.length:idx, 0, dragId);
+
+  moved.position = pos;
+  // write the new within-zone order, then reflow global sort_order across all zones
+  ids.forEach((id,i)=>{ const s=STATE.sections.find(x=>x.id===id); if(s) s._zoneOrder=i; });
+  reflowOrders();
+  renderBoard();
+
+  try{
+    if(!samePos) await api("/sections/"+dragId,{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(toPayload(moved))});
+    await api("/sections/reorder",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(STATE.sections.map(s=>({id:s.id,sort_order:s.sort_order,position:s.position})))});
+    toast(samePos?"Reordered":"Moved · "+zoneDesc(pos));
+  }catch(e){ toast(e.message,true); loadSections(); }
+}
+// assign global sort_order by walking zones top→bottom, ordering within a zone by _zoneOrder then existing sort
+function reflowOrders(){
+  let n=0;
+  ZONES.forEach(z=>{
+    STATE.sections.filter(s=>(s.position||"top")===z.pos)
+      .sort((a,b)=>(a._zoneOrder??a.sort_order)-(b._zoneOrder??b.sort_order))
+      .forEach(s=>{ s.sort_order=n++; delete s._zoneOrder; });
+  });
+}
+function toPayload(s){
+  return {title:s.title, subtitle:s.subtitle||null, type:s.type, style:s.style,
+    position:s.position||"top", sort_order:s.sort_order, enabled:!!s.enabled, config:s.config||{}};
+}
+
+/* ---------- row actions ---------- */
+async function toggleEnabled(id,on){
+  const s=STATE.sections.find(x=>x.id===id); if(!s)return; s.enabled=on;
+  document.querySelector(`.block[data-id="${id}"]`)?.classList.toggle("disabled",!on);
+  try{ await api("/sections/"+id,{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(toPayload(s))}); toast(on?"Enabled":"Disabled"); renderBoard(); }
+  catch(e){ toast(e.message,true); }
+}
+async function delSection(id){
+  const s=STATE.sections.find(x=>x.id===id);
+  if(!confirm(`Delete “${s?s.title:"this section"}”?`)) return;
+  try{ await api("/sections/"+id,{method:"DELETE"}); STATE.sections=STATE.sections.filter(x=>x.id!==id); renderBoard(); toast("Deleted"); }
+  catch(e){ toast(e.message,true); }
+}
+async function duplicateSection(id){
+  const s=STATE.sections.find(x=>x.id===id); if(!s)return;
+  const p={...toPayload(s), title:(s.title||"Section")+" copy", sort_order:STATE.sections.length, position:s.position||"top"};
+  try{ const created=await api("/sections",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(p)});
+    STATE.sections.push(created); renderBoard(); toast("Duplicated"); }
+  catch(e){ toast(e.message,true); }
+}
+window.toggleEnabled=toggleEnabled; window.delSection=delSection; window.duplicateSection=duplicateSection; window.loadSections=loadSections;
+
+</script>
+<script>
+/* ============================================================
+   app-editor.js: the section editor drawer.
+   Restructures the dense param form into grouped, visual controls:
+   type cards, sliders, segmented mode toggles, searchable token
+   pickers, and a live preview. Placement is handled by dragging on
+   the board, so the editor focuses purely on "what's in the row".
+   ============================================================ */
+
+let EDIT_TYPE = "plex_collection";
+
+/* ---- open / close ---- */
+function editSection(id){ openEditor(STATE.sections.find(s=>s.id===id)); }
+async function openEditor(existing){
+  const cfg = existing ? (existing.config||{}) : {};
+  $("ed-title").textContent = existing ? "Edit section" : "New section";
+  $("ed-sub").textContent = existing ? "Changes apply on save." : "It'll appear on the layout board, drag to place it.";
+  // Open immediately + show a loading veil while we hydrate from Plex (libraries,
+  // collections, tags), so the drawer never appears to hang on a blank delay.
+  $("preview-box").classList.add("hidden");
+  $("ed-loading").classList.remove("hidden");
+  $("scrim-bg").classList.add("open"); $("drawer").classList.add("open");
+  try {
+  $("f-id").value = existing ? existing.id : "";
+  $("f-title").value = existing ? existing.title : "";
+  $("f-subtitle").value = existing ? (existing.subtitle||"") : "";
+  $("f-enabled").checked = existing ? !!existing.enabled : true;
+  $("f-style").querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.val===(existing?existing.style:"row")));
+  EDIT_TYPE = existing ? existing.type : "plex_collection";
+
+  // reset selections + chip paging
+  STATE.selectedLibs=new Set(); STATE.selectedCollections=new Map();
+  DIMS.forEach(d=>{ STATE.selected[d]=new Set(); STATE.tagShown[d]=CHIP_STEP; });
+  STATE.colShown=CHIP_STEP;
+
+  selectType(EDIT_TYPE, true);
+  await ensureLibraries();
+
+  // ---- hydrate type-specific config ----
+  // collections
+  (cfg.collection_keys || (cfg.collection_key?[{key:cfg.collection_key,title:cfg.collection_key}]:[])).forEach(c=>{
+    const key=String(c.key??c); STATE.selectedCollections.set(key,{key, title:c.title||key});
+  });
+  STATE.collectionLib = cfg.library_section || (cfg.library_sections&&cfg.library_sections[0]) || (STATE.libraries[0]&&STATE.libraries[0].key) || "";
+  $("f-collection-lib").value = STATE.collectionLib;
+  await loadCollections(STATE.collectionLib);
+  setSlider("f-col-limit", cfg.limit||20);
+
+  // filter libraries + tags
+  let libs = (cfg.library_sections&&cfg.library_sections.length)?cfg.library_sections:(cfg.library_section?[cfg.library_section]:[]);
+  libs=libs.map(String);
+  if(!libs.length && !existing && STATE.libraries.length) libs=[String(STATE.libraries[0].key)];
+  for(const k of libs){ if(STATE.libraries.some(l=>String(l.key)===k)){ STATE.selectedLibs.add(k); await ensureTags(k); } }
+  renderLibraryChips();
+
+  // filter numerics
+  segSet("f-media", cfg.media_type||"");
+  $("f-sort").value = cfg.sort || "rating:desc";
+  setSlider("f-limit", cfg.limit||30);
+  setSlider("f-rating-min", cfg.rating_min ?? 0);
+  setSlider("f-added", cfg.added_within_days ?? 0);
+  $("f-yafter").value = cfg.released_after_year ?? "";
+  $("f-ybefore").value = cfg.released_before_year ?? "";
+  $("f-trending").checked = !!cfg.trending;
+  $("f-randomize").checked = !!cfg.randomize;
+  setSlider("f-query-limit", cfg.query_limit||100);
+
+  // dimension token pickers
+  buildDimPickers();
+  DIMS.forEach(d=>{
+    (cfg[d]||[]).forEach(x=>STATE.selected[d].add(String(x.id??x)));
+    setDimMode(d, cfg[`${d}_mode`]||"pool");
+    $(`f-${d}-pick`).value = cfg[`${d}_pick`]||1;
+    renderTagChips(d);
+  });
+  $("f-genres-primary").value = cfg.genre_primary_count ?? 3;
+
+  // sessions / history
+  setSlider("f-sessions-limit", cfg.limit ?? 0);
+  segSet("f-history-media", cfg.media_type||"");
+  $("f-history-sort").value = cfg.sort || "viewedAt:desc";
+  setSlider("f-history-limit", cfg.limit ?? 20);
+
+  onRandomizeChange();
+  } finally {
+    $("ed-loading").classList.add("hidden");
+  }
+}
+function closeEditor(){ $("scrim-bg").classList.remove("open"); $("drawer").classList.remove("open"); }
+
+/* ---- type selection ---- */
+function selectType(t, silent){
+  EDIT_TYPE=t;
+  document.querySelectorAll(".typecard").forEach(c=>c.classList.toggle("on", c.dataset.type===t));
+  $("grp-collection").classList.toggle("hidden", t!=="plex_collection");
+  $("grp-filter").classList.toggle("hidden", t!=="filter");
+  $("grp-sessions").classList.toggle("hidden", t!=="sessions");
+  $("grp-history").classList.toggle("hidden", t!=="history");
+  // Hero style only really makes sense for collection/filter; allow anyway but note
+  if(!silent) onRandomizeChange();
+}
+
+/* ---- segmented helpers ---- */
+function segSet(segId, val){
+  $(segId).querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.val===val));
+}
+function segGet(segId){ const b=$(segId).querySelector("button.on"); return b?b.dataset.val:""; }
+function wireSeg(segId, onChange){
+  $(segId).querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    $(segId).querySelectorAll("button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); if(onChange) onChange(b.dataset.val);
+  }));
+}
+
+/* ---- sliders ---- */
+const SLIDER_FMT = {
+  "f-rating-min": v=> v==0?'<small>Off</small>':v,
+  "f-added": v=> v==0?'<small>Any time</small>':(v+' <small>days</small>'),
+  "f-limit": v=>v, "f-col-limit": v=>v, "f-query-limit": v=>v,
+  "f-sessions-limit": v=> v==0?'<small>All</small>':v, "f-history-limit": v=>v,
+  "rt-sync-hour": v=> String(v).padStart(2,'0')+':00',
+};
+function setSlider(id, val){ const el=$(id); if(!el)return; el.value=val; updateSliderLabel(id); }
+function updateSliderLabel(id){ const el=$(id), lab=$(id+"-v"); if(lab) lab.innerHTML=(SLIDER_FMT[id]||(v=>v))(Number(el.value)); }
+function wireSliders(){ Object.keys(SLIDER_FMT).forEach(id=>{ const el=$(id); if(el) el.addEventListener("input",()=>updateSliderLabel(id)); }); }
+
+/* ---- libraries / collections ---- */
+async function ensureLibraries(){
+  if(!STATE.libraries.length){ try{ STATE.libraries=(await api("/admin/plex/sections")).sections||[]; }catch(e){ STATE.libraries=[]; } }
+  $("f-collection-lib").innerHTML = STATE.libraries.length
+    ? STATE.libraries.map(l=>`<option value="${l.key}">${esc(l.title)} · ${l.type}</option>`).join("")
+    : `<option value="">Plex not available</option>`;
+  $("plex-warn").innerHTML = STATE.libraries.length ? "" : `${icon("info")} Plex isn't configured, so this section resolves empty.`;
+  $("plex-warn").classList.toggle("hidden", !!STATE.libraries.length);
+}
+async function loadCollections(lib){
+  if(!lib) return;
+  if(!STATE.collectionsByLib[lib]){ try{ STATE.collectionsByLib[lib]=(await api("/admin/plex/collections?section="+lib)).collections||[]; }catch(e){ STATE.collectionsByLib[lib]=[]; } }
+  (STATE.collectionsByLib[lib]||[]).forEach(c=>{ STATE.colByKey[String(c.key)]={key:String(c.key),title:c.title,count:c.count}; });
+  renderCollectionChips();
+}
+function renderCollectionChips(){
+  const box=$("f-collections-chips"); if(!box)return;
+  const lib=$("f-collection-lib").value, cols=STATE.collectionsByLib[lib]||[];
+  const q=($("f-collection-search").value||"").trim().toLowerCase();
+  const selected=[...STATE.selectedCollections.keys()].map(k=>{ const m=STATE.colByKey[k]; return {key:k, title:(m&&m.title)||STATE.selectedCollections.get(k).title||k, count:m&&m.count}; });
+  const restAll=q?cols.filter(c=>!STATE.selectedCollections.has(String(c.key))&&(c.title||"").toLowerCase().includes(q)):cols.filter(c=>!STATE.selectedCollections.has(String(c.key)));
+  const shown=STATE.colShown||CHIP_STEP, rest=restAll.slice(0,shown);
+  const show=[...selected,...rest], sv=box.scrollTop;
+  box.innerHTML = (show.length
+    ? show.map(c=>`<span class="chip ${STATE.selectedCollections.has(String(c.key))?'sel':''}" onclick="toggleCollection('${c.key}')">${esc(c.title)}${c.count?`<span class="ct">${c.count}</span>`:""}</span>`).join("")
+    : `<span class="muted" style="padding:4px">${cols.length?'No matches':'No collections in this library'}</span>`)
+    + (restAll.length>rest.length ? `<div class="chips-more">+${restAll.length-rest.length} more, scroll to load</div>` : "");
+  box.scrollTop=sv;
+}
+function toggleCollection(key){ key=String(key); if(STATE.selectedCollections.has(key)) STATE.selectedCollections.delete(key); else{ const c=STATE.colByKey[key]; STATE.selectedCollections.set(key,{key,title:c?c.title:key}); } renderCollectionChips(); }
+
+/* ---- libraries (filter) + tag dimensions ---- */
+async function ensureTags(lib){ if(STATE.tagsByLib[lib])return; try{ STATE.tagsByLib[lib]=await api("/admin/plex/tags?section="+lib); }catch(e){ STATE.tagsByLib[lib]={genres:[],directors:[],actors:[],countries:[]}; } }
+function renderLibraryChips(){
+  const box=$("f-libraries"); if(!box)return;
+  if(!STATE.libraries.length){ box.innerHTML='<span class="muted" style="padding:4px">Plex not available</span>'; return; }
+  box.innerHTML = STATE.libraries.map(l=>`<span class="chip ${STATE.selectedLibs.has(String(l.key))?'sel':''}" onclick="toggleLib('${l.key}')">${esc(l.title)}<span class="ct">${l.type}</span></span>`).join("");
+}
+async function toggleLib(key){ key=String(key); if(STATE.selectedLibs.has(key)) STATE.selectedLibs.delete(key); else{ STATE.selectedLibs.add(key); await ensureTags(key); } renderLibraryChips(); DIMS.forEach(d=>{ STATE.tagShown[d]=CHIP_STEP; renderTagChips(d); }); }
+function mergedTags(dim){
+  const byId=new Map();
+  STATE.selectedLibs.forEach(lib=>((STATE.tagsByLib[lib]||{})[dim]||[]).forEach(r=>{ const id=String(r.id), cur=byId.get(id); if(cur)cur.count+=(r.count||0); else byId.set(id,{id,title:r.title||id,count:r.count||0}); }));
+  return [...byId.values()].sort((a,b)=>(b.count-a.count)||a.title.localeCompare(b.title));
+}
+
+/* build the 4 dimension pickers into #filter-dims */
+function buildDimPickers(){
+  const host=$("filter-dims"); if(host.dataset.built) return;
+  host.innerHTML = DIMS.map(d=>`
+    <div class="field">
+      <label>${DIM_LABEL[d]}</label>
+      <div class="slider-row" style="gap:9px;margin-bottom:9px">
+        <div class="seg" id="f-${d}-mode">
+          <button data-val="pool" class="on">Match any</button>
+          <button data-val="random">Random pick</button>
+        </div>
+        <div class="pick-wrap hidden" id="f-${d}-pickwrap" style="display:flex;align-items:center;gap:7px">
+          <span class="muted" style="font-size:12px">pick</span>
+          <input type="number" id="f-${d}-pick" min="1" value="1" style="width:58px">
+        </div>
+      </div>
+      ${d==="genres" ? `<div class="slider-row" style="gap:7px;margin-bottom:9px;align-items:center">
+        <span class="muted" style="font-size:12px">Consider only a title's first</span>
+        <input type="number" id="f-genres-primary" min="0" max="20" value="3" style="width:58px">
+        <span class="muted" style="font-size:12px">genres (0 = match any)</span>
+      </div>` : ""}
+      <div class="tokenfield">
+        <input class="search" id="f-${d}-search" placeholder="Search ${DIM_LABEL[d].toLowerCase()}…">
+        <div class="chips" id="f-${d}-chips"></div>
+      </div>
+    </div>`).join("");
+  DIMS.forEach(d=>{
+    wireSeg(`f-${d}-mode`, m=>{ $(`f-${d}-pickwrap`).classList.toggle("hidden", m!=="random"); });
+    $(`f-${d}-search`).addEventListener("input", ()=>{ STATE.tagShown[d]=CHIP_STEP; renderTagChips(d); });
+    $(`f-${d}-chips`).addEventListener("scroll", ()=>onChipScroll($(`f-${d}-chips`), ()=>{
+      STATE.tagShown[d]=(STATE.tagShown[d]||CHIP_STEP)+CHIP_STEP; renderTagChips(d);
+    }));
+  });
+  host.dataset.built="1";
+}
+function setDimMode(d, mode){ segSet(`f-${d}-mode`, mode); $(`f-${d}-pickwrap`).classList.toggle("hidden", mode!=="random"); }
+function getDimMode(d){ return segGet(`f-${d}-mode`)||"pool"; }
+function renderTagChips(dim){
+  const box=$(`f-${dim}-chips`); if(!box)return;
+  if(!STATE.selectedLibs.size){ box.innerHTML='<span class="muted" style="padding:4px">Pick a library above first</span>'; return; }
+  const all=mergedTags(dim), sel=STATE.selected[dim];
+  const q=($(`f-${dim}-search`).value||"").trim().toLowerCase();
+  const chosen=all.filter(t=>sel.has(t.id));
+  const restAll=q?all.filter(t=>!sel.has(t.id)&&(t.title||"").toLowerCase().includes(q)):all.filter(t=>!sel.has(t.id));
+  const shown=STATE.tagShown[dim]||CHIP_STEP, rest=restAll.slice(0,shown);
+  const show=[...chosen,...rest], sv=box.scrollTop;
+  box.innerHTML = (show.length
+    ? show.map(t=>`<span class="chip ${sel.has(t.id)?'sel':''}" onclick="toggleTag('${dim}','${t.id}')">${esc(t.title)}<span class="ct">${t.count||0}</span></span>`).join("")
+    : `<span class="muted" style="padding:4px">${all.length?'No matches':'None in this library'}</span>`)
+    + (restAll.length>rest.length ? `<div class="chips-more">+${restAll.length-rest.length} more, scroll to load</div>` : "");
+  box.scrollTop=sv;
+}
+// Reveal more chips when a chip list is scrolled near its end.
+function onChipScroll(box, loadMore){
+  if(box._loading) return;
+  if(box.scrollTop+box.clientHeight >= box.scrollHeight-20){ box._loading=true; loadMore(); box._loading=false; }
+}
+function toggleTag(dim,id){ const s=STATE.selected[dim]; id=String(id); if(s.has(id))s.delete(id); else s.add(id); renderTagChips(dim); }
+
+function onRandomizeChange(){
+  const on=$("f-randomize").checked, isFilter=EDIT_TYPE==="filter";
+  $("grp-query-limit").classList.toggle("hidden", !(on&&isFilter));
+}
+
+/* ---- collect + save ---- */
+function num(v){ return v===""||v==null?null:Number(v); }
+function collectPayload(){
+  const t=EDIT_TYPE, cfg={randomize:$("f-randomize").checked};
+  if(t==="plex_collection"){
+    cfg.collection_keys=[...STATE.selectedCollections.values()].map(c=>({key:c.key,title:(STATE.colByKey[c.key]&&STATE.colByKey[c.key].title)||c.title}));
+    cfg.library_section=$("f-collection-lib").value||null;
+    cfg.limit=num($("f-col-limit").value)||0;
+  } else if(t==="sessions"){
+    cfg.limit=num($("f-sessions-limit").value)||0;
+  } else if(t==="history"){
+    cfg.media_type=segGet("f-history-media")||null; cfg.sort=$("f-history-sort").value; cfg.limit=num($("f-history-limit").value)||20;
+  } else {
+    cfg.library_sections=[...STATE.selectedLibs];
+    cfg.media_type=segGet("f-media")||null; cfg.sort=$("f-sort").value;
+    cfg.limit=num($("f-limit").value)||30; cfg.query_limit=num($("f-query-limit").value)||100;
+    cfg.rating_min=num($("f-rating-min").value)||null;
+    cfg.added_within_days=num($("f-added").value)||null;
+    cfg.released_after_year=num($("f-yafter").value); cfg.released_before_year=num($("f-ybefore").value);
+    DIMS.forEach(d=>{ const all=mergedTags(d); cfg[d]=all.filter(x=>STATE.selected[d].has(x.id)).map(x=>({id:x.id,title:x.title})); cfg[`${d}_mode`]=getDimMode(d); cfg[`${d}_pick`]=num($(`f-${d}-pick`).value)||1; });
+    const gp=num($("f-genres-primary").value); cfg.genre_primary_count=gp==null?3:gp;
+    cfg.trending=$("f-trending").checked;
+  }
+  return { title:$("f-title").value.trim(), subtitle:$("f-subtitle").value.trim()||null,
+    type:t, style:segGet("f-style"), enabled:$("f-enabled").checked, sort_order:0, config:cfg };
+}
+async function saveSection(){
+  const p=collectPayload();
+  if(!p.title){ toast("Give it a title",true); $("f-title").focus(); return; }
+  const id=$("f-id").value;
+  if(id){ const ex=STATE.sections.find(s=>s.id==id); p.position=ex?ex.position:"top"; p.sort_order=ex?ex.sort_order:0; }
+  else { p.position="top"; p.sort_order=STATE.sections.length; }
+  try{
+    const saved=await api(id?"/sections/"+id:"/sections",{method:id?"PUT":"POST",headers:{"content-type":"application/json"},body:JSON.stringify(p)});
+    if(id){ const i=STATE.sections.findIndex(s=>s.id==id); if(i>=0) STATE.sections[i]={...STATE.sections[i],...saved}; }
+    else STATE.sections.push(saved);
+    toast(id?"Saved":"Section created"); closeEditor(); renderBoard();
+  }catch(e){ toast(e.message,true); }
+}
+async function previewCurrent(){
+  const id=$("f-id").value;
+  if(!id){ toast("Save first, then preview",false); return; }
+  try{
+    const p=collectPayload(); const ex=STATE.sections.find(s=>s.id==id); p.position=ex?ex.position:"top"; p.sort_order=ex?ex.sort_order:0;
+    await api("/sections/"+id,{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(p)});
+    const res=await api("/sections/"+id+"/preview");
+    $("preview-box").classList.remove("hidden");
+    $("preview-count").textContent="· "+res.items.length+" items";
+    $("preview-thumbs").innerHTML = res.items.length
+      ? res.items.slice(0,18).map(it=>`<div class="pt" style="${gradStyle(it.g||gradAt(it.title.length))}"><span class="ptt">${esc(it.title)}</span></div>`).join("")
+      : '<span class="muted">No items matched these filters.</span>';
+  }catch(e){ toast(e.message,true); }
+}
+Object.assign(window,{openEditor,closeEditor,selectType,toggleCollection,toggleLib,toggleTag,onRandomizeChange,saveSection,previewCurrent,wireSeg,wireSliders});
+
+</script>
+<script>
+/* ============================================================
+   app-ratings.js: display source groups, rating formula, sync.
+   Adds a live badge preview so "always vs fallback" is concrete,
+   and turns the weighted formula into sliders.
+   ============================================================ */
+
+const SOURCE_META = {
+  mdblist:   {label:"MDbList",        short:"MDB", sample:84,  tone:"#3A6FDB"},
+  imdb:      {label:"IMDb",           short:"IMDb",sample:81,  tone:"#E6B91E"},
+  tomatoes:  {label:"RT Critics",     short:"RT",  sample:94,  tone:"#FA320A"},
+  popcorn:   {label:"RT Audience",    short:"AUD", sample:88,  tone:"#1FA055"},
+  tmdb:      {label:"TMDB",           short:"TMDB",sample:79,  tone:"#01B4E4"},
+  metacritic:{label:"Metacritic",     short:"MC",  sample:76,  tone:"#6C3FC5"},
+};
+const ALL_SOURCES = ["mdblist","imdb","tomatoes","popcorn","tmdb","metacritic"];
+let RT = {config:null, sync:null};
+
+async function loadRatings(){
+  try{ RT.config=await api("/ratings/config"); RT.sync=await api("/admin/ratings/sync"); }
+  catch(e){ toast("Load ratings failed: "+e.message,true); return; }
+  renderBadgePreview(); renderGroups();
+  segSet("rt-preset", RT.config.formula?.preset||"mdblist");
+  $("rt-missing").value = RT.config.formula?.missing_mdblist||"average";
+  $("rt-voteaware").checked = !!RT.config.formula?.vote_aware;
+  renderWeights(); onPresetChange();
+  $("rt-sync-enabled").checked = !!RT.sync.enabled;
+  setSlider("rt-sync-hour", RT.sync.hour ?? 3);
+  try{ const s=await api("/admin/status"); $("rt-sync-info").textContent=`${s.caches.mdblist_ratings.toLocaleString()} titles cached · last sync ${fmtTime(s.caches.ratings_last_sync)}`; }catch(e){}
+}
+function ratingGroups(){
+  if(!Array.isArray(RT.config.display_groups)||!RT.config.display_groups.length)
+    RT.config.display_groups=[{visibility:"always", sources:[...(RT.config.display_sources||[])]}];
+  return RT.config.display_groups;
+}
+
+/* ---- live badge preview ---- */
+function badgeChip(src){
+  const m=SOURCE_META[src];
+  return `<div style="display:inline-flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:7px 11px;box-shadow:var(--shadow-sm)">
+    <span style="width:9px;height:9px;border-radius:3px;background:${m.tone}"></span>
+    <span style="font-weight:700;font-size:13px">${m.sample}${src==='tomatoes'||src==='popcorn'||src==='metacritic'||src==='imdb'?'':''}</span>
+    <span class="muted" style="font-size:11px">${m.short}</span></div>`;
+}
+function computeShown(){
+  const groups=ratingGroups();
+  const alwaysSrcs = groups.filter(g=>g.visibility==="always").flatMap(g=>g.sources).filter(s=>SOURCE_META[s].sample>0);
+  if(alwaysSrcs.length) return {srcs:alwaysSrcs, note:"All “show always” badges that have a score."};
+  for(const g of groups){ if(g.visibility==="fallback"){ const got=g.sources.filter(s=>SOURCE_META[s].sample>0); if(got.length) return {srcs:got, note:"First fallback group with a score (everything above was empty)."}; } }
+  return {srcs:[], note:"Nothing to show for this item."};
+}
+function renderBadgePreview(){
+  const {srcs,note}=computeShown();
+  $("rt-preview").innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="width:42px;height:60px;border-radius:8px;background:linear-gradient(150deg,#0d1b4c,#3f6fd1);flex:none;box-shadow:var(--shadow-sm)"></div>
+      <div style="min-width:0">
+        <div style="font-weight:650;font-size:14px">Glass Harbor <span class="muted" style="font-weight:500">· 2025</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${srcs.length?srcs.map(badgeChip).join(""):'<span class="muted">No badges</span>'}</div>
+      </div>
+    </div>
+    <div class="muted" style="font-size:12px;margin-top:11px;display:flex;gap:7px;align-items:center">${icon("eye")} ${note}</div>`;
+}
+
+
+function addGroup(){ ratingGroups().push({visibility:"fallback",sources:[]}); renderGroups(); }
+function toggleGroupSource(gi,s){ const groups=ratingGroups(),g=groups[gi];
+  if(g.sources.includes(s)) g.sources=g.sources.filter(x=>x!==s);
+  else { groups.forEach(gr=>gr.sources=gr.sources.filter(x=>x!==s)); g.sources.push(s); }
+  renderGroups(); renderBadgePreview();
+}
+
+/* ---- groups (drag to reorder) ---- */
+let RT_DRAG=null;
+function renderGroups(){
+  const groups=ratingGroups(); const assigned=new Set(groups.flatMap(g=>g.sources));
+  const cont=$("rt-groups");
+  cont.innerHTML = groups.map((g,gi)=>{
+    const isAlways=g.visibility==="always";
+    return `<div class="card pad rt-group" draggable="true" data-gi="${gi}" style="margin-bottom:11px;display:flex;gap:12px;align-items:flex-start">
+      <div class="rt-grip" title="Drag to reorder">${icon("grip")}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="seg" id="rt-vis-${gi}">
+            <button data-val="always" class="${isAlways?'on':''}">Always shown</button>
+            <button data-val="fallback" class="${isAlways?'':'on'}">Fallback${!isAlways?' #'+fallbackRank(gi):''}</button>
+          </div>
+          <span class="muted" style="font-size:12px;flex:1">${isAlways?'Renders whenever it has a score':'Only if everything above is empty'}</span>
+          ${groups.length>1?`<button class="iconbtn" onclick="removeGroup(${gi})" title="Remove group">${icon("trash")}</button>`:""}
+        </div>
+        <div class="chips" style="margin-top:12px;max-height:none">
+          ${ALL_SOURCES.map(s=>{ const inThis=g.sources.includes(s), inOther=assigned.has(s)&&!inThis;
+            return `<span class="chip ${inThis?'sel':''} ${inOther?'dim':''}" onclick="toggleGroupSource(${gi},'${s}')">${esc(SOURCE_META[s].label)}${inThis?`<span class="ct">${g.sources.indexOf(s)+1}</span>`:''}</span>`; }).join("")}
+        </div>
+      </div>
+    </div>`;
+  }).join("") + `<button class="btn ghost sm" onclick="addGroup()">${icon("plus")} Add fallback group</button>`;
+  groups.forEach((g,gi)=> wireSeg(`rt-vis-${gi}`, v=>{ ratingGroups()[gi].visibility=v; renderGroups(); renderBadgePreview(); }));
+  wireGroupDnD();
+}
+function fallbackRank(gi){ const g=ratingGroups(); let n=0; for(let i=0;i<=gi;i++) if(g[i].visibility==="fallback") n++; return n; }
+function removeGroup(gi){ ratingGroups().splice(gi,1); renderGroups(); renderBadgePreview(); }
+function wireGroupDnD(){
+  const cont=$("rt-groups");
+  cont.querySelectorAll('.rt-group').forEach(card=>{
+    card.addEventListener('dragstart', e=>{ if(!e.target.closest('.rt-grip')){ e.preventDefault(); return; } RT_DRAG=Number(card.dataset.gi); card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+    card.addEventListener('dragend', ()=>{ card.classList.remove('dragging'); clearRtDrop(); RT_DRAG=null; });
+  });
+  if(cont.dataset.dnd) return; cont.dataset.dnd="1";
+  cont.addEventListener('dragover', e=>{ if(RT_DRAG==null) return; e.preventDefault(); placeRtDropLine(rtGroupAfter(e.clientY)); });
+  cont.addEventListener('dragleave', e=>{ if(!cont.contains(e.relatedTarget)) clearRtDrop(); });
+  cont.addEventListener('drop', e=>{ if(RT_DRAG==null) return; e.preventDefault(); rtGroupDrop(rtGroupAfter(e.clientY)); });
+}
+function rtGroupAfter(y){
+  const cards=[...$("rt-groups").querySelectorAll('.rt-group:not(.dragging)')];
+  let best={off:-Infinity,el:null};
+  for(const el of cards){ const b=el.getBoundingClientRect(); const off=y-b.top-b.height/2; if(off<0&&off>best.off) best={off,el}; }
+  return best.el;
+}
+function clearRtDrop(){ document.querySelectorAll('.rt-dropline').forEach(l=>l.remove()); }
+function placeRtDropLine(before){ clearRtDrop(); const cont=$("rt-groups"); const line=document.createElement('div'); line.className='rt-dropline'; if(before) cont.insertBefore(line,before); else cont.insertBefore(line, cont.querySelector('button.btn.ghost.sm')); }
+function rtGroupDrop(before){
+  clearRtDrop(); if(RT_DRAG==null) return;
+  const groups=ratingGroups(); const moved=groups[RT_DRAG];
+  const rest=groups.filter((_,i)=>i!==RT_DRAG);
+  let idx = before ? rest.indexOf(groups[Number(before.dataset.gi)]) : rest.length;
+  rest.splice(idx<0?rest.length:idx,0,moved);
+  RT.config.display_groups=rest;
+  renderGroups(); renderBadgePreview();
+}
+
+/* ---- formula ---- */
+function renderWeights(){
+  const f=RT.config.formula||{}, w=f.weights||{}, mv=f.min_votes||{};
+  $("rt-weights").innerHTML = ALL_SOURCES.filter(s=>s!=="mdblist").map(s=>`
+    <div style="display:grid;grid-template-columns:120px 1fr 78px;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line)">
+      <div style="font-weight:600;font-size:13px">${esc(SOURCE_META[s].label)}</div>
+      <div class="slider-row"><input type="range" min="0" max="2" step="0.1" id="w-${s}" value="${w[s]??0}"><span class="slider-val" id="w-${s}-v" style="min-width:34px">${(w[s]??0).toFixed(1)}</span></div>
+      <div style="display:flex;align-items:center;gap:6px"><input type="number" min="0" id="mv-${s}" value="${mv[s]??0}" style="width:100%" title="min votes"><span class="muted" style="font-size:10px">votes</span></div>
+    </div>`).join("");
+  ALL_SOURCES.filter(s=>s!=="mdblist").forEach(s=>{ const el=$("w-"+s); el.addEventListener("input",()=>$("w-"+s+"-v").textContent=Number(el.value).toFixed(1)); });
+}
+function onPresetChange(){ $("rt-custom").classList.toggle("hidden", segGet("rt-preset")!=="custom"); }
+
+async function saveRatingsConfig(){
+  const weights={}, min_votes={};
+  ALL_SOURCES.filter(s=>s!=="mdblist").forEach(s=>{ weights[s]=Number($("w-"+s)?.value||0); min_votes[s]=Number($("mv-"+s)?.value||0); });
+  const groups=ratingGroups().filter(g=>g.sources.length);
+  const cfg={ display_groups:groups, display_sources:[...new Set(groups.flatMap(g=>g.sources))],
+    formula:{preset:segGet("rt-preset"), missing_mdblist:$("rt-missing").value, vote_aware:$("rt-voteaware").checked, weights, min_votes} };
+  try{ RT.config=await api("/ratings/config",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(cfg)}); toast("Saved ratings config"); }
+  catch(e){ toast(e.message,true); }
+}
+async function saveSync(){
+  const body={enabled:$("rt-sync-enabled").checked, hour:Number($("rt-sync-hour").value)};
+  try{ RT.sync=await api("/admin/ratings/sync",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(body)}); toast("Saved schedule"); }
+  catch(e){ toast(e.message,true); }
+}
+Object.assign(window,{loadRatings,removeGroup,addGroup,toggleGroupSource,onPresetChange,saveRatingsConfig,saveSync});
+
+</script>
+<script>
+// Title/subtitle placeholder help, shown from the (i) next to those fields.
+const TEMPLATE_TIP_HTML = `
+  <div class="tip">
+    <h5>Title &amp; subtitle placeholders</h5>
+    <p>In a <b>Filter</b> section, drop one of these into the title or subtitle and it's replaced with the tag(s) the section picked:</p>
+    <div class="tprow"><code>{genre}</code><span>the genre(s) you picked, e.g. “Action”</span></div>
+    <div class="tprow"><code>{director}</code><span>the director(s) you picked</span></div>
+    <div class="tprow"><code>{actor}</code><span>the actor(s) you picked</span></div>
+    <div class="tprow"><code>{country}</code><span>the country/countries you picked</span></div>
+    <p class="tpnote">Plural forms (<code>{genres}</code>, <code>{actors}</code>, …) work the same. With a dimension set to <b>Random pick</b> the value rotates each load, so <code>More from {director}</code> becomes a different name each visit.</p>
+  </div>`;
+function initTemplateTips(){
+  const ic = icon("info");
+  ["tip-title","tip-subtitle"].forEach(id=>{ const el=$(id); if(el) el.innerHTML = ic + TEMPLATE_TIP_HTML; });
+}
+
+/* ============================================================
+   AUTH GATE  (first-run setup / login)
+   ============================================================ */
+let AUTH_MODE = "login";   // "setup" | "login"
+let APP_STARTED = false;
+
+function showAuthErr(msg){
+  const e=$("auth-err");
+  if(!msg){ e.classList.add("hidden"); e.textContent=""; return; }
+  e.textContent=msg; e.classList.remove("hidden");
+}
+
+function renderAuthMode(mode){
+  AUTH_MODE = mode;
+  const setup = mode==="setup";
+  $("auth-title").textContent = setup ? "Create admin account" : "Sign in";
+  $("auth-sub").textContent = setup
+    ? "No account exists yet. Set one up to lock the dashboard."
+    : "Enter your admin credentials.";
+  $("auth-submit").textContent = setup ? "Create account" : "Sign in";
+  $("auth-confirm-field").classList.toggle("hidden", !setup);
+  $("auth-confirm").required = setup;
+  $("auth-pass").setAttribute("autocomplete", setup ? "new-password" : "current-password");
+  showAuthErr("");
+}
+
+function openAuthGate(mode){
+  renderAuthMode(mode);
+  $("auth-gate").classList.remove("hidden");
+  $("logout-btn").classList.add("hidden");
+  setTimeout(()=>{ const u=$("auth-user"); if(u && !u.value) u.focus(); else $("auth-pass").focus(); }, 30);
+}
+
+// Confirms whether the admin session itself is gone, vs. a 401 from an endpoint
+// with its own auth. Asks the public auth-state endpoint, which never 401s.
+async function sessionExpired(){
+  try{
+    const r = await fetch(API_BASE + "/admin/auth/state", {credentials:"same-origin"});
+    if(!r.ok) return true;
+    const st = await r.json();
+    return !st.authenticated;
+  }catch(e){ return false; }  // can't tell (network) — don't nuke the session
+}
+
+// Called when a protected call returns 401 mid-session (expired/cleared cookie).
+function requireLogin(){
+  if(DEMO) return;
+  openAuthGate("login");
+}
+
+async function submitAuth(ev){
+  ev.preventDefault();
+  showAuthErr("");
+  const username = $("auth-user").value.trim();
+  const password = $("auth-pass").value;
+  if(AUTH_MODE==="setup"){
+    if(password.length < 8){ showAuthErr("Password must be at least 8 characters."); return false; }
+    if(password !== $("auth-confirm").value){ showAuthErr("Passwords don't match."); return false; }
+  }
+  const btn=$("auth-submit"); btn.disabled=true;
+  try{
+    const path = AUTH_MODE==="setup" ? "/admin/auth/setup" : "/admin/auth/login";
+    const r = await fetch(API_BASE + path, {
+      method:"POST", credentials:"same-origin",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({username, password}),
+    });
+    if(!r.ok){ let d=""; try{d=(await r.json()).detail||"";}catch(e){} throw new Error(d || `${r.status} ${r.statusText}`); }
+    // Authenticated: hide the gate and boot the app.
+    $("auth-gate").classList.add("hidden");
+    $("auth-pass").value=""; $("auth-confirm").value="";
+    $("logout-btn").classList.remove("hidden");
+    startApp();
+    toast(AUTH_MODE==="setup" ? "Admin account created" : "Signed in");
+  }catch(e){
+    showAuthErr(e.message || "Sign in failed");
+  }finally{
+    btn.disabled=false;
+  }
+  return false;
+}
+
+async function logout(){
+  try{ await fetch(API_BASE + "/admin/auth/logout", {method:"POST", credentials:"same-origin"}); }catch(e){}
+  openAuthGate("login");
+}
+
+async function gate(){
+  // Decide setup vs login vs straight-in. If the backend is unreachable we fall
+  // through to demo mode (no auth) so the design preview still works offline.
+  let st;
+  try{
+    const r = await fetch(API_BASE + "/admin/auth/state", {credentials:"same-origin"});
+    if(!r.ok) throw new Error("state "+r.status);
+    st = await r.json();
+  }catch(e){
+    DEMO = true; showDemoBanner(); startApp(); return;
+  }
+  // Plex is mandatory: block before login/setup until it's reachable.
+  if(!st.plex_ready){
+    $("auth-gate").classList.add("hidden");
+    $("plex-gate-detail").textContent = st.plex_configured
+      ? "Plex is configured but not reachable. Check PLEX_URL and PLEX_TOKEN, then restart."
+      : "Plex is not configured yet.";
+    $("plex-gate").classList.remove("hidden");
+    return;
+  }
+  $("plex-gate").classList.add("hidden");
+  if(st.authenticated){
+    $("logout-btn").classList.remove("hidden");
+    startApp();
+  }else{
+    openAuthGate(st.configured ? "login" : "setup");
+  }
+}
+
+/* ============================================================
+   APP BOOTSTRAP
+   ============================================================ */
+function startApp(){
+  if(APP_STARTED){ loadStatus(); return; }
+  APP_STARTED = true;
+  const params = new URLSearchParams(location.search);
+  // wire static segmented controls
+  wireSeg("f-style"); wireSeg("f-media"); wireSeg("f-history-media");
+  wireSeg("rt-preset", onPresetChange);
+  wireSliders();
+  initTemplateTips();
+  $("f-collections-chips") && $("f-collections-chips").addEventListener("scroll", ()=>onChipScroll($("f-collections-chips"), ()=>{
+    STATE.colShown=(STATE.colShown||CHIP_STEP)+CHIP_STEP; renderCollectionChips();
+  }));
+  // initial tab: sections is the centrepiece; allow ?screen= or #hash
+  const screen = params.get("screen") || (location.hash||"").replace("#","") || "sections";
+  loadStatus();           // populates version + settings regardless
+  switchTab(["dashboard","integrations","sections","ratings","settings"].includes(screen)?screen:"sections");
+}
+
+(function init(){
+  gate();
+})();
+</script>
+</body>
+</html>
