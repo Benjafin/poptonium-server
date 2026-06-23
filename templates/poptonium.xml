@@ -45,4 +45,5 @@
   <Config Name="OPENSUBTITLES_API_KEY" Target="OPENSUBTITLES_API_KEY" Default="" Mode="" Description="Optional. OpenSubtitles app API key (opensubtitles.com, Profile, API Consumers). Required for online subtitle search/download." Type="Variable" Display="always" Required="false" Mask="true"></Config>
   <Config Name="OPENSUBTITLES_USERNAME" Target="OPENSUBTITLES_USERNAME" Default="" Mode="" Description="Optional. OpenSubtitles account username; its daily download quota (20/day free) is used for downloads." Type="Variable" Display="always" Required="false" Mask="false"></Config>
   <Config Name="OPENSUBTITLES_PASSWORD" Target="OPENSUBTITLES_PASSWORD" Default="" Mode="" Description="Optional. OpenSubtitles account password." Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="TZ" Target="TZ" Default="" Mode="" Description="Optional. Container timezone (e.g. Europe/Berlin). Sets the 'server time' used by the nightly ratings-sync schedule." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
 </Container>
