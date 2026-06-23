@@ -49,8 +49,10 @@ docker run -d --name poptonium \
 
 ### Unraid
 
-Add the template `unraid/my-poptonium.xml` (Docker, Add Container, Template), set `PLEX_URL` and
-`PLEX_TOKEN` (and any optional vars), then open the WebUI (`http://<host>:8085/admin`).
+Search **Poptonium** in Community Applications, or add the template
+[`templates/poptonium.xml`](templates/poptonium.xml) manually (Docker, Add Container, Template).
+Set `PLEX_URL` and `PLEX_TOKEN` (and any optional vars), then open the WebUI
+(`http://<host>:8085/admin`).
 
 ### First run
 
@@ -59,6 +61,31 @@ admin UI shows a **Connect Plex first** screen and stays blocked until the conne
 variables and restart, then press Retry). Once Plex is reachable, `/admin` prompts you to create a
 single admin account that guards the dashboard and every config-changing endpoint; the client read
 endpoints stay open.
+
+## Release channels
+
+The image is published to GHCR on two channels, built automatically by GitHub Actions:
+
+| Channel | Git branch | Image tag | Use |
+|---------|------------|-----------|-----|
+| Production | `main` | `ghcr.io/benjafin/poptonium:latest` | Stable, recommended. |
+| Development | `develop` | `ghcr.io/benjafin/poptonium:dev` | Testing the next release; may break. |
+
+Pushing to a branch builds and pushes the matching tag; a `vX.Y.Z` git tag also publishes pinned
+`:X.Y.Z` / `:X.Y` images.
+
+**Running both on Unraid.** Install the template twice. For the dev instance pick the **dev** branch
+in the version dropdown and give it a distinct container name (`poptonium-dev`), host port, and
+appdata path (`/mnt/user/appdata/poptonium-dev`) so it can't collide with production.
+
+**Promoting dev to production.** When `develop` looks good, fast-forward it into `main`:
+
+```bash
+git checkout main
+git merge --ff-only develop
+git push                      # CI rebuilds :latest -> production updates on next "check for updates"
+git tag v1.2.0 && git push --tags   # optional: pin a versioned release
+```
 
 ## Reverse proxy
 
