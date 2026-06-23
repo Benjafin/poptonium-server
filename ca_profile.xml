@@ -1,14 +1,8 @@
 <?xml version="1.0"?>
 <CommunityApplications>
-  <Profile>
-Poptonium is the companion backend for the Poptonium Plex client. It caches
-ratings from mdblist (IMDb / Rotten Tomatoes / TMDB / Metacritic / MDbList),
-builds the Discover "popular" feed, serves user-defined custom Library
-sections, proxies Overseerr search/requests, and can search and download
-subtitles from OpenSubtitles. A web admin UI at `/admin` manages caches,
-scheduled jobs, config, and sections.
+  <Profile>Companion backend for the Poptonium Plex client. Allows serving custom sections, curations and ratings, integrates with Overseerr and facilitates other extra functionalities on top of Plex.
 
-Plex is required; mdblist, Overseerr and OpenSubtitles are optional.
+Plex is required.
 
 Support and documentation: https://github.com/Benjafin/poptonium-server
   </Profile>
