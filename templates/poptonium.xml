@@ -9,7 +9,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Benjafin/poptonium-server/issues</Support>
   <Project>https://github.com/Benjafin/poptonium-server</Project>
-  <Overview>Companion backend for the Poptonium Plex client. Caches ratings from mdblist, builds the Discover "popular" feed, proxies Overseerr requests, serves user-defined custom Library sections, and can search/download subtitles from OpenSubtitles. Includes a web admin UI at /admin to view caches, scheduled jobs and config, and create/order custom sections. Plex is required; mdblist, Overseerr and OpenSubtitles are optional (leave their variables blank to disable).</Overview>
+  <Overview>Companion backend for the Poptonium Plex client. Allows serving custom sections, curations and ratings, integrates with Overseerr and facilitates other extra functionalities on top of Plex.</Overview>
   <Category>MediaApp:Video</Category>
   <WebUI>http://[IP]:[PORT:8085]/admin</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/Benjafin/poptonium-server/main/templates/poptonium.xml</TemplateURL>
