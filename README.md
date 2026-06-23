@@ -49,10 +49,11 @@ docker run -d --name poptonium \
 
 ### Unraid
 
-Search **Poptonium** in Community Applications, or add the template
-[`templates/poptonium.xml`](templates/poptonium.xml) manually (Docker, Add Container, Template).
-Set `PLEX_URL` and `PLEX_TOKEN` (and any optional vars), then open the WebUI
-(`http://<host>:8085/admin`).
+Open the **Apps** tab, search for **Poptonium**, and click Install. Set `PLEX_URL` and `PLEX_TOKEN`
+(and any optional vars), then open the WebUI (`http://<host>:8085/admin`).
+
+(If you prefer to add it by hand, the same template lives at
+[`templates/poptonium.xml`](templates/poptonium.xml): Docker, Add Container, Template.)
 
 ### First run
 
