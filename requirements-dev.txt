@@ -1,5 +1,5 @@
 # Test-only dependencies. Install with:
 #   pip install -r requirements.txt -r requirements-dev.txt
 pytest==9.1.1
-pytest-asyncio==1.2.0
+pytest-asyncio==1.4.0
 respx==0.23.1   # httpx transport-level mocking for Plex/Overseerr/etc.

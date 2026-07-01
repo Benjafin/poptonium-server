@@ -130,7 +130,7 @@ async def popular_tmdb_ranks(media_types: list[str]) -> dict[int, int]:
 
 @router.get("/popular")
 async def get_popular(
-    media_type: str = Query(..., regex="^(movie|show)$"),
+    media_type: str = Query(..., pattern="^(movie|show)$"),
     limit: int = Query(200, ge=1, le=1000),
 ):
     cfg = await get_rating_config()

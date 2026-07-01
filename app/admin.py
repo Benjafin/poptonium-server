@@ -205,7 +205,7 @@ async def admin_run_cron(job_id: str):
 
 
 @router.post("/admin/cache/clear")
-async def admin_clear_cache(which: str = Query(..., regex="^(ratings|popular)$")):
+async def admin_clear_cache(which: str = Query(..., pattern="^(ratings|popular)$")):
     db = await get_db()
     try:
         await db.execute("DELETE FROM mdblist_ratings" if which == "ratings" else "DELETE FROM popular_items")
