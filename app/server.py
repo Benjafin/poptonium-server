@@ -6,6 +6,7 @@ reverse-proxy prefix. ``/poptonium`` is canonical (exposed via the Plex SWAG dom
 """
 
 import asyncio
+from contextlib import asynccontextmanager
 
 import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -39,7 +40,14 @@ from . import (
     subtitle_prefs,
 )
 
-app = FastAPI(title="poptonium")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await startup()
+    yield
+    await shutdown()
+
+
+app = FastAPI(title="poptonium", lifespan=lifespan)
 
 # Aggregate every feature router into one, then mount it under each prefix.
 # Per-endpoint config mutations carry their own require_admin dependency
@@ -65,7 +73,6 @@ api.include_router(admin.router, dependencies=[Depends(require_admin)])
 api.include_router(admin.ui_router)
 
 
-@app.on_event("startup")
 async def startup():
     # Warm the shared keep-alive HTTP client.
     http_client()
@@ -121,7 +128,6 @@ async def startup():
     log.info("Scheduler started: popular items refresh at 3:00 AM daily")
 
 
-@app.on_event("shutdown")
 async def shutdown():
     await aclose_http_client()
 
