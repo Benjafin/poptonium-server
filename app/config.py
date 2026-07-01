@@ -4,7 +4,8 @@ import logging
 import os
 
 # Persistent data always lives on the /data bind; the DB filename is fixed.
-DB_PATH = "/data/poptonium.db"
+# Overridable via DB_PATH only so tests can point at a temp file; prod leaves it.
+DB_PATH = os.environ.get("DB_PATH", "/data/poptonium.db")
 
 # Optional. With no key, ratings and the Discover popular feed are disabled; the
 # rest of the service keeps working.

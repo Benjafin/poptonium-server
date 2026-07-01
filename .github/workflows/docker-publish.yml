@@ -15,7 +15,11 @@ env:
   IMAGE_NAME: benjafin/poptonium
 
 jobs:
+  test:
+    uses: ./.github/workflows/tests.yml
+
   build:
+    needs: test  # never publish an image whose tests are red
     runs-on: ubuntu-latest
     permissions:
       contents: read
