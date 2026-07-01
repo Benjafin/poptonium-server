@@ -1,5 +1,6 @@
 """Overseerr request proxy: request media, list requested ids, and search."""
 
+import time
 from typing import Optional
 
 from urllib.parse import quote
@@ -8,10 +9,141 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from .client_auth import require_plex_user
+from .client_auth import plex_user_identity, require_plex_user, require_plex_user_token
 from .config import OVERSEERR_API_KEY, OVERSEERR_URL, log
 
 router = APIRouter()
+
+# Overseerr's user list keyed for lookup (plexId -> id, lowercased email -> id),
+# cached briefly so we don't page the whole list on every request.
+_USER_CACHE_TTL = 300  # seconds
+_user_cache: dict = {"expiry": 0.0, "by_plex_id": {}, "by_email": {}}
+
+
+async def _overseerr_user_maps() -> tuple[dict[int, int], dict[str, int]]:
+    """Return (plexId -> Overseerr user id, lowercased email -> Overseerr user id).
+
+    Cached for a short window on success; on failure we return the previously
+    cached maps (possibly empty) so a transient Overseerr blip just falls back to
+    owner attribution rather than erroring the request."""
+    now = time.time()
+    if _user_cache["expiry"] > now:
+        return _user_cache["by_plex_id"], _user_cache["by_email"]
+
+    by_plex_id: dict[int, int] = {}
+    by_email: dict[str, int] = {}
+    ok = False
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            skip, take = 0, 100
+            while True:
+                resp = await client.get(
+                    f"{OVERSEERR_URL}/api/v1/user",
+                    params={"take": take, "skip": skip},
+                    headers={"X-Api-Key": OVERSEERR_API_KEY},
+                )
+                if resp.status_code != 200:
+                    log.error("Overseerr user list failed: %s", resp.status_code)
+                    break
+                data = resp.json()
+                results = data.get("results", [])
+                ok = True  # at least one page came back cleanly
+                for u in results:
+                    uid = u.get("id")
+                    if uid is None:
+                        continue
+                    pid = u.get("plexId")
+                    if pid is not None:
+                        try:
+                            by_plex_id[int(pid)] = uid
+                        except (TypeError, ValueError):
+                            pass
+                    email = u.get("email")
+                    if email:
+                        by_email[email.strip().lower()] = uid
+                total = data.get("pageInfo", {}).get("results", 0)
+                skip += take
+                if not results or skip >= total:
+                    break
+    except Exception as e:
+        log.error("Overseerr user fetch error: %s", e)
+
+    if ok:
+        _user_cache.update(expiry=now + _USER_CACHE_TTL, by_plex_id=by_plex_id, by_email=by_email)
+        return by_plex_id, by_email
+    return _user_cache["by_plex_id"], _user_cache["by_email"]
+
+
+def _match_user(
+    by_plex_id: dict[int, int], by_email: dict[str, int],
+    plex_id, email: Optional[str],
+) -> Optional[int]:
+    """Match a Plex identity to an Overseerr user id — plexId first, email fallback."""
+    if plex_id is not None:
+        try:
+            uid = by_plex_id.get(int(plex_id))
+        except (TypeError, ValueError):
+            uid = None
+        if uid is not None:
+            return uid
+    if email:
+        return by_email.get(email)
+    return None
+
+
+async def _import_overseerr_user(plex_id: int) -> Optional[int]:
+    """Ask Overseerr to import this Plex user (only works if they're shared to the
+    configured Plex server), returning their new Overseerr user id. None if the
+    import created no matching user (e.g. the user isn't shared to the server)."""
+    try:
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+            resp = await client.post(
+                f"{OVERSEERR_URL}/api/v1/user/import-from-plex",
+                json={"plexIds": [str(plex_id)]},
+                headers={"X-Api-Key": OVERSEERR_API_KEY, "Content-Type": "application/json"},
+            )
+        if resp.status_code not in (200, 201):
+            log.error("Overseerr user import failed: %s %s", resp.status_code, resp.text[:200])
+            return None
+        created = resp.json()
+        for u in (created if isinstance(created, list) else []):
+            pid = u.get("plexId")
+            if pid is None:
+                continue
+            try:
+                if int(pid) == int(plex_id):
+                    return u.get("id")
+            except (TypeError, ValueError):
+                pass
+    except Exception as e:
+        log.error("Overseerr user import error: %s", e)
+    return None
+
+
+async def _overseerr_user_id_for(token: str) -> Optional[int]:
+    """Resolve the requesting caller's Overseerr user id from their Plex token, so
+    the request is attributed to them rather than to the API-key owner. Imports the
+    user into Overseerr on first sight when possible. Returns None when the caller
+    can't be matched or imported (caller falls back to owner attribution)."""
+    identity = await plex_user_identity(token)
+    if not identity:
+        return None
+    plex_id = identity.get("plex_id")
+    email = identity.get("email")
+
+    by_plex_id, by_email = await _overseerr_user_maps()
+    uid = _match_user(by_plex_id, by_email, plex_id, email)
+    if uid is not None:
+        return uid
+
+    # Not in Overseerr yet — import them from the Plex server, then re-resolve.
+    if plex_id is not None:
+        imported = await _import_overseerr_user(plex_id)
+        if imported is not None:
+            _user_cache["expiry"] = 0.0  # bust cache so later lookups see the new user
+            log.info("Imported Plex user %s into Overseerr as user %s", plex_id, imported)
+            return imported
+    return None
 
 
 class OverseerrRequest(BaseModel):
@@ -34,8 +166,11 @@ def _season_statuses(media_info: dict) -> dict[int, int]:
     return statuses
 
 
-@router.post("/overseerr/request", dependencies=[Depends(require_plex_user)])
-async def overseerr_request(req: OverseerrRequest):
+@router.post("/overseerr/request")
+async def overseerr_request(
+    req: OverseerrRequest,
+    token: str = Depends(require_plex_user_token),
+):
     if not OVERSEERR_URL or not OVERSEERR_API_KEY:
         raise HTTPException(503, "Overseerr not configured")
 
@@ -49,6 +184,14 @@ async def overseerr_request(req: OverseerrRequest):
     # For TV shows, request the chosen seasons (or all when none specified).
     if overseerr_type == "tv":
         body["seasons"] = req.seasons if req.seasons else "all"
+
+    # Attribute the request to the actual requesting Plex user when we can map
+    # them to an Overseerr account; otherwise it falls back to the API-key owner.
+    user_id = await _overseerr_user_id_for(token)
+    if user_id is not None:
+        body["userId"] = user_id
+    else:
+        log.info("Overseerr request: no matching Overseerr user, attributing to API-key owner")
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(

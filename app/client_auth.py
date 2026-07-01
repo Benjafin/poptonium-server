@@ -27,6 +27,7 @@ from .plex import plex_configured
 _VALID_TTL = 300  # seconds
 _token_cache: dict[str, float] = {}            # sha256(token) -> expiry
 _account_cache: dict[str, tuple[float, str]] = {}  # sha256(token) -> (expiry, account_id)
+_identity_cache: dict[str, tuple[float, dict]] = {}  # sha256(token) -> (expiry, identity)
 _CACHE_MAX = 4096
 
 
@@ -94,6 +95,42 @@ async def plex_account_id(token: str) -> Optional[str]:
             _account_cache.clear()
         _account_cache[key] = (time.time() + _VALID_TTL, account_id)
     return account_id
+
+
+async def plex_user_identity(token: str) -> Optional[dict]:
+    """Resolve the caller's plex.tv identity — the numeric Plex account id and
+    email — used to map them to their Overseerr account (Overseerr keys users on
+    ``plexId``/email). Only a real account token resolves. Cached briefly per
+    token. Returns ``{"plex_id": int|None, "email": str|None}`` or None."""
+    if not token:
+        return None
+    key = _digest(token)
+    hit = _identity_cache.get(key)
+    if hit and hit[0] > time.time():
+        return hit[1]
+    try:
+        resp = await http_client().get(
+            PLEX_TV_USER_URL,
+            headers={"X-Plex-Token": token, "Accept": "application/json"},
+            timeout=8,
+        )
+    except Exception as e:
+        log.warning("Plex identity resolution failed: %s", e)
+        return None
+    if resp.status_code != 200:
+        return None
+    try:
+        data = resp.json()
+    except Exception:
+        return None
+    identity = {
+        "plex_id": data.get("id"),
+        "email": (data.get("email") or "").strip().lower() or None,
+    }
+    if len(_identity_cache) > _CACHE_MAX:
+        _identity_cache.clear()
+    _identity_cache[key] = (time.time() + _VALID_TTL, identity)
+    return identity
 
 
 async def plex_user_can_access(token: str, rating_key: str) -> bool:
