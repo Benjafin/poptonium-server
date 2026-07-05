@@ -120,7 +120,15 @@ def test_pick_tags_random_mode_picks_subset_count():
 
 # ---- version gating (config-aware section_min_version / version_gte) ---------
 
-from app.config import section_min_version, version_gte  # noqa: E402
+from app.config import degrade_config, section_min_version, version_gte  # noqa: E402
+
+
+def test_degrade_config_turns_off_unsupported_features():
+    cfg = {"episode_items": True, "limit": 10}
+    assert degrade_config(cfg, "1.0.0")["episode_items"] is False   # too old -> off
+    assert degrade_config(cfg, "1.1.0")["episode_items"] is True    # capable -> kept
+    assert degrade_config(cfg, "1.0.0")["limit"] == 10              # non-feature untouched
+    assert cfg["episode_items"] is True                            # original not mutated
 
 
 def test_section_min_version_config_feature_floor():

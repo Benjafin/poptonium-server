@@ -784,16 +784,14 @@ async def test_resolve_filter_episodes_merges_movies_and_episodes(isolate_db, mo
     # episode_items lists individual episodes (from show libs) merged with movies
     # (from movie libs), newest first, with an episode_label and the show as title.
     def route(path):
-        if "/library/metadata/" in path:                    # show art/logo enrichment
-            return _container([{"art": "/show-art", "Image": [{"type": "clearLogo", "url": "/logo"}]}])
         if "/sections/1/all" in path and "type=1" in path:  # movies
             return _container([_meta("m1", "Movie New", mtype="movie", tmdb=1, addedAt=500)])
         if "/sections/2/all" in path and "type=4" in path:  # episodes
             return _container([
-                _meta("e9", "Finale", mtype="episode", addedAt=900,
-                      grandparentTitle="Silo", grandparentRatingKey="900", parentIndex=3, index=1),
-                _meta("e5", "Mid", mtype="episode", addedAt=300,
-                      grandparentTitle="Silo", grandparentRatingKey="900", parentIndex=2, index=4),
+                _meta("e9", "Finale", mtype="episode", addedAt=900, grandparentTitle="Silo",
+                      grandparentRatingKey="900", grandparentThumb="/silo-poster", parentIndex=3, index=1),
+                _meta("e5", "Mid", mtype="episode", addedAt=300, grandparentTitle="Silo",
+                      grandparentRatingKey="900", grandparentThumb="/silo-poster", parentIndex=2, index=4),
             ])
         return None
 
@@ -803,10 +801,9 @@ async def test_resolve_filter_episodes_merges_movies_and_episodes(isolate_db, mo
     assert [it["rating_key"] for it in out] == ["e9", "m1", "e5"]
     ep = out[0]
     assert ep["type"] == "episode"
-    assert ep["title"] == "Silo"                 # show name is the display title
+    assert ep["title"] == "Silo"                  # show name is the display title
+    assert ep["thumb"] == "/silo-poster"          # show poster is the card art
     assert ep["episode_label"] == "S3·E1 · Finale"
-    assert ep["clear_logo"] == "/logo"           # enriched from the show
-    assert "_logo_rk" not in ep                   # transient key stripped
 
 
 async def test_resolve_section_episode_items_degrades_by_client(isolate_db, monkeypatch):

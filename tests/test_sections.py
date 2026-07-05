@@ -285,3 +285,16 @@ async def test_config_decode_fallback_on_bad_json(app):
             await db.close()
         listed = (await ac.get("/sections")).json()
     assert listed[0]["config"] == {}
+
+
+async def test_shells_min_version_degrades_by_client_header(app):
+    # An episode_items section reports a lower min_app_version to an old client (which
+    # will be served whole shows) and the real floor to a client that announces 1.1.0.
+    async with _client(app) as ac:
+        await ac.post("/sections", json={"title": "Recent", "type": "filter",
+                                         "config": {"episode_items": True}})
+        old = (await ac.get("/sections")).json()[0]
+        new = (await ac.get("/sections",
+                            headers={"X-Poptonium-Client-Schema": "1.1.0"})).json()[0]
+    assert old["min_app_version"] == "1.0.0"
+    assert new["min_app_version"] == "1.1.0"

@@ -20,10 +20,9 @@ from .config import (
     MDBLIST_API_KEY,
     PLEX_TOKEN,
     PLEX_TYPE,
-    SECTION_FEATURE_MIN_VERSION,
+    degrade_config,
     log,
     section_min_version,
-    version_gte,
 )
 from .plex import (
     map_plex_item,
@@ -282,12 +281,14 @@ def _episode_item(m: dict) -> dict:
     return {
         "rating_key": str(m.get("ratingKey", "")),
         "tmdb_id": None,
+        # Show name as the display title; the show POSTER as the card art (so the
+        # episode reads as a poster card in a row), with the show backdrop for heroes.
         "title": m.get("grandparentTitle") or m.get("title", ""),
         "type": "episode",
         "year": m.get("year"),
-        "thumb": m.get("thumb") or m.get("grandparentThumb"),
-        "art": m.get("art") or m.get("grandparentArt"),
-        "clear_logo": None,          # enriched from the show below
+        "thumb": m.get("grandparentThumb") or m.get("thumb"),
+        "art": m.get("grandparentArt") or m.get("art"),
+        "clear_logo": plex_image(m, "grandparentClearLogo"),
         "summary": m.get("summary"),
         "content_rating": m.get("contentRating"),
         "added_at": _as_epoch(m.get("addedAt")),
@@ -296,7 +297,6 @@ def _episode_item(m: dict) -> dict:
         "rating": None,
         "sources": {},
         "episode_label": label,
-        "_logo_rk": str(m.get("grandparentRatingKey") or ""),
     }
 
 
@@ -549,23 +549,7 @@ async def _resolve_filter_episodes(cfg: dict, libs: list[str]) -> list[dict]:
     items.sort(key=lambda it: it.get("added_at") or 0, reverse=True)
     if added_cutoff is not None:
         items = [it for it in items if (it.get("added_at") or 0) >= added_cutoff]
-    items = items[:show_limit]
-
-    # Enrich episode cards with the show's clean backdrop + clearLogo (like history);
-    # the episode metadata only carries the episode still and no logo.
-    uniq = list({it["_logo_rk"] for it in items if it.get("_logo_rk")})
-    if uniq:
-        fetched = await asyncio.gather(*[_art_logo_for(r) for r in uniq])
-        fmap = dict(zip(uniq, fetched))
-        for it in items:
-            if it.get("type") == "episode":
-                f = fmap.get(it.get("_logo_rk", "")) or {}
-                if f.get("art"):
-                    it["art"] = f["art"]
-                it["clear_logo"] = f.get("logo")
-    for it in items:
-        it.pop("_logo_rk", None)
-    return items
+    return items[:show_limit]
 
 
 # ---------- Sessions section ("Who's watching") ----------
@@ -818,9 +802,7 @@ async def resolve_section(row, client_schema: str = "1.0.0") -> dict:
     # shows instead of episode cards) rather than the section being skipped entirely.
     # The served `min_app_version` (below) is then computed from this degraded cfg, so
     # it never exceeds what we actually sent -> the client won't drop it.
-    for flag, floor in SECTION_FEATURE_MIN_VERSION.items():
-        if cfg.get(flag) and not version_gte(client_schema, floor):
-            cfg = {**cfg, flag: False}
+    cfg = degrade_config(cfg, client_schema)
     # Pick tags once so the filter query and the title/subtitle templates agree.
     picks = _pick_tags(cfg) if row["type"] == "filter" else {}
     # Resolve library display names only when a `{library}` placeholder is used.

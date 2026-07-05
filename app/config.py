@@ -94,6 +94,17 @@ def version_gte(a: str, b: str) -> bool:
     n = max(len(pa), len(pb))
     return pa + [0] * (n - len(pa)) >= pb + [0] * (n - len(pb))
 
+
+def degrade_config(config: dict, client_schema: str) -> dict:
+    """A copy of `config` with any opt-in feature the requesting client is too old to
+    render turned off, so the section is served (and version-stamped) in its supported
+    form rather than skipped. Shared by section resolution and the shells listing."""
+    out = dict(config or {})
+    for flag, floor in SECTION_FEATURE_MIN_VERSION.items():
+        if out.get(flag) and not version_gte(client_schema, floor):
+            out[flag] = False
+    return out
+
 # Rating sources we support, in canonical id form. mdblist keys: tomatoes=RT
 # critic, popcorn=RT audience; "mdblist" is the item-level aggregate score.
 SUPPORTED_SOURCES = ["mdblist", "imdb", "tomatoes", "popcorn", "tmdb", "metacritic"]

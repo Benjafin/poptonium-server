@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from .auth import require_admin
-from .config import SECTION_SCHEMA_VERSION, section_min_version
+from .config import SECTION_SCHEMA_VERSION, degrade_config, section_min_version
 from .db import get_db
 from .section_resolve import resolve_section
 
@@ -46,11 +46,15 @@ class ReorderItem(BaseModel):
     position: Optional[str] = None
 
 
-def _section_to_dict(row, include_config: bool = True) -> dict:
+def _section_to_dict(row, include_config: bool = True, client_schema: Optional[str] = None) -> dict:
     try:
         cfg = json.loads(row["config"])
     except Exception:
         cfg = {}
+    # Stamp the min version of the form THIS client will be served: with a client
+    # schema, features it can't render are dropped first, so an older app sees the
+    # degraded floor (e.g. 1.0.0) for its skeleton and keeps rendering the section.
+    ver_cfg = degrade_config(cfg, client_schema) if client_schema else cfg
     d = {
         "id": row["id"],
         "title": row["title"],
@@ -61,7 +65,7 @@ def _section_to_dict(row, include_config: bool = True) -> dict:
         "sort_order": row["sort_order"],
         "enabled": bool(row["enabled"]),
         # Derived from type/style/config (not stored): min app version to render it.
-        "min_app_version": section_min_version(row["type"], row["style"], cfg),
+        "min_app_version": section_min_version(row["type"], row["style"], ver_cfg),
     }
     if include_config:
         d["config"] = cfg
@@ -69,14 +73,18 @@ def _section_to_dict(row, include_config: bool = True) -> dict:
 
 
 @router.get("/sections")
-async def list_sections():
+async def list_sections(request: Request):
+    # Shells listing: the client sends its schema so each section's min_app_version
+    # reflects the form it will actually be served (see _section_to_dict). Absent
+    # (admin dashboard / older apps) -> the 1.0.0 baseline.
+    client_schema = request.headers.get(CLIENT_SCHEMA_HEADER, "1.0.0")
     db = await get_db()
     try:
         cursor = await db.execute(
             "SELECT * FROM sections ORDER BY sort_order ASC, id ASC"
         )
         rows = await cursor.fetchall()
-        return [_section_to_dict(r) for r in rows]
+        return [_section_to_dict(r, client_schema=client_schema) for r in rows]
     finally:
         await db.close()
 
