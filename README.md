@@ -160,5 +160,7 @@ configured in the admin UI. Secrets are masked and read-only in the web UI.
 - **Custom sections**: create **Plex Collection** sections (mirror a collection live) or **Filter**
   sections (library items matching RT/TMDB minimums, added-within / release-year windows, genres).
   Each has a title, optional subtitle, order, enabled toggle, a style (**Row** or **Hero**), and a
-  placement anchor on the Library page. The app renders them from `/sections/resolved`.
+  placement anchor on the Library page. The app renders them from `/sections/resolved`. Newer
+  section capabilities are gated per app version so older apps degrade or skip gracefully — see
+  [docs/section-schema-versioning.md](docs/section-schema-versioning.md).
 - **Maintenance**: clear the ratings or popular caches and trigger scheduled jobs on demand.
