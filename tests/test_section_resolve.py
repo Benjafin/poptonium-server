@@ -50,6 +50,21 @@ def test_apply_template_passthrough_and_unknown():
     assert sr._apply_template("{actor}", _PICKS) == ""             # picked, but empty list
 
 
+def test_apply_template_library_token():
+    libs = ["Films", "Tv-series"]
+    assert sr._apply_template("Recently Added {library}", _PICKS, ["Films"]) == "Recently Added Films"
+    assert sr._apply_template("{libraries} · new", _PICKS, libs) == "Films, Tv-series · new"
+    # No libraries resolved -> the token collapses to empty, like an unpicked tag.
+    assert sr._apply_template("Recently Added {library}", _PICKS, []) == "Recently Added "
+
+
+def test_refs_library():
+    assert sr._refs_library("Recently Added {library}", None) is True
+    assert sr._refs_library(None, "{libraries} shelf") is True
+    assert sr._refs_library("Best of {director}", "top rated") is False
+    assert sr._refs_library(None, None) is False
+
+
 # ---- _sort_metas ------------------------------------------------------------
 
 def _titles(metas):

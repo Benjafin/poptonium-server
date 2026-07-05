@@ -174,19 +174,57 @@ def _pick_tags(cfg: dict) -> dict:
     return out
 
 
-def _apply_template(text: Optional[str], picks: dict) -> Optional[str]:
-    """Substitute `{director}`/`{directors}`/`{genre}`/… placeholders in a
-    title/subtitle with the comma-joined titles of the picked tags."""
+def _apply_template(text: Optional[str], picks: dict,
+                    libraries: Optional[list[str]] = None) -> Optional[str]:
+    """Substitute placeholders in a title/subtitle. `{director}`/`{genre}`/… expand
+    to the comma-joined picked tags; `{library}`/`{libraries}` expand to the section's
+    Plex library name(s) (e.g. "Recently Added {library}" -> "Recently Added Films")."""
     if not text or "{" not in text:
         return text
 
     def repl(m):
-        dim = _TEMPLATE_KEYS.get(m.group(1))
+        key = m.group(1)
+        if key in ("library", "libraries"):
+            return ", ".join(libraries or [])
+        dim = _TEMPLATE_KEYS.get(key)
         if dim is None:
             return m.group(0)
         return ", ".join(o["title"] for o in picks.get(dim, []) if o.get("title"))
 
     return re.sub(r"\{(\w+)\}", repl, text)
+
+
+def _refs_library(*texts: Optional[str]) -> bool:
+    """Whether any title/subtitle uses the `{library}`/`{libraries}` placeholder,
+    so we only pay the library-name lookup when a section actually needs it."""
+    return any(t and ("{library}" in t or "{libraries}" in t) for t in texts)
+
+
+_library_map_cache: dict = {"ts": 0.0, "map": {}}
+
+
+async def _library_title_map() -> dict:
+    """Plex library section key -> display title (e.g. "1" -> "Films"), cached ~1h."""
+    if _library_map_cache["ts"] > time.time() and _library_map_cache["map"]:
+        return _library_map_cache["map"]
+    data = await plex_get("/library/sections")
+    out: dict = {}
+    for d in (data or {}).get("MediaContainer", {}).get("Directory", []):
+        key = d.get("key")
+        if key is not None:
+            out[str(key)] = d.get("title") or ""
+    if out:
+        _library_map_cache.update(ts=time.time() + 3600, map=out)
+    return out
+
+
+async def _library_names(cfg: dict) -> list[str]:
+    """Display titles of the section's configured libraries, in config order."""
+    libs = _section_libraries(cfg)
+    if not libs:
+        return []
+    m = await _library_title_map()
+    return [m[k] for k in libs if m.get(k)]
 
 
 # Plex meta fields we can sort a merged (multi-library) result set by in Python,
@@ -672,6 +710,10 @@ async def resolve_section(row) -> dict:
         cfg = {}
     # Pick tags once so the filter query and the title/subtitle templates agree.
     picks = _pick_tags(cfg) if row["type"] == "filter" else {}
+    # Resolve library display names only when a `{library}` placeholder is used.
+    libraries = (await _library_names(cfg)
+                 if row["type"] == "filter" and _refs_library(row["title"], row["subtitle"])
+                 else [])
     if row["type"] == "plex_collection":
         items = await _resolve_collection(cfg)
     elif row["type"] == "filter":
@@ -684,8 +726,8 @@ async def resolve_section(row) -> dict:
         items = []
     return {
         "id": row["id"],
-        "title": _apply_template(row["title"], picks),
-        "subtitle": _apply_template(row["subtitle"], picks),
+        "title": _apply_template(row["title"], picks, libraries),
+        "subtitle": _apply_template(row["subtitle"], picks, libraries),
         "type": row["type"],
         "style": row["style"],
         "position": row["position"],

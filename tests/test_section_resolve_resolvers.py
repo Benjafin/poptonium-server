@@ -77,12 +77,14 @@ class _Fake:
 
 @pytest.fixture(autouse=True)
 def _reset_module_caches():
-    """Reset the module-level caches so avatar/art-logo results don't leak."""
+    """Reset the module-level caches so avatar/art-logo/library results don't leak."""
     sr._avatar_cache.update(ts=0.0, by_id={}, by_name={})
     sr._artlogo_cache.clear()
+    sr._library_map_cache.update(ts=0.0, map={})
     yield
     sr._avatar_cache.update(ts=0.0, by_id={}, by_name={})
     sr._artlogo_cache.clear()
+    sr._library_map_cache.update(ts=0.0, map={})
 
 
 @pytest.fixture
@@ -409,6 +411,22 @@ async def test_resolve_filter_episode_aware_movie_only_skips_rollup(isolate_db, 
     assert [it["rating_key"] for it in out] == ["m1", "m2"]
     # No episode roll-up (path ending /all) nor metadata back-fill was issued.
     assert not any(c.endswith("/all") or "/library/metadata/" in c for c in fake.calls)
+
+
+async def test_library_names_maps_keys_to_titles(monkeypatch):
+    sections = {"MediaContainer": {"Directory": [
+        {"key": 1, "type": "movie", "title": "Films"},
+        {"key": 2, "type": "show", "title": "Tv-series"},
+    ]}}
+    fake = _Fake({"/library/sections": sections})
+    monkeypatch.setattr(sr, "plex_get", fake)
+    assert await sr._library_names({"library_sections": ["1"]}) == ["Films"]
+    assert await sr._library_names({"library_sections": ["2"]}) == ["Tv-series"]
+    assert await sr._library_names({"library_sections": ["1", "2"]}) == ["Films", "Tv-series"]
+    # No libraries configured -> no lookup, empty list.
+    assert await sr._library_names({}) == []
+    # The key->title map is cached after the first populate: one Plex hit total.
+    assert sum("/library/sections" in c for c in fake.calls) == 1
 
 
 # --------------------------------------------------------------------------- #

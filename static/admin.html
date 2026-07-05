@@ -2198,7 +2198,8 @@ const TEMPLATE_TIP_HTML = `
     <div class="tprow"><code>{director}</code><span>the director(s) you picked</span></div>
     <div class="tprow"><code>{actor}</code><span>the actor(s) you picked</span></div>
     <div class="tprow"><code>{country}</code><span>the country/countries you picked</span></div>
-    <p class="tpnote">Plural forms (<code>{genres}</code>, <code>{actors}</code>, …) work the same. With a dimension set to <b>Random pick</b> the value rotates each load, so <code>More from {director}</code> becomes a different name each visit.</p>
+    <div class="tprow"><code>{library}</code><span>the section's library name(s), e.g. “Films”</span></div>
+    <p class="tpnote">Plural forms (<code>{genres}</code>, <code>{actors}</code>, <code>{libraries}</code>, …) work the same. With a dimension set to <b>Random pick</b> the value rotates each load, so <code>More from {director}</code> becomes a different name each visit.</p>
   </div>`;
 function initTemplateTips(){
   const ic = icon("info");
