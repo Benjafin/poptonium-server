@@ -118,6 +118,18 @@ async def _resolve_collection(cfg: dict) -> list[dict]:
 # Sort keys that rank by the canonical rating (no native Plex equivalent).
 _COMBINED_SORTS = {"combined", "combined:desc", "rating", "rating:desc"}
 
+# Synthetic sort (no single native Plex field): rank by "date added", but for a
+# show use its NEWEST EPISODE's add date, so a series resurfaces when a fresh
+# episode lands even though the show's own addedAt (first-added date) never moves.
+# Resolved in Python from an episode roll-up (see `_episode_added_map`); the Plex
+# query itself falls back to a plain addedAt sort.
+EPISODE_ADDED_SORT = "episodeAddedAt:desc"
+# How many most-recently-added episodes to scan per library for the roll-up, and
+# how many of the resulting recently-active shows to back-fill metadata for (the
+# ones a plain addedAt query buries below the fetch pool).
+_EPISODE_ROLLUP_POOL = 1000
+_EPISODE_ACTIVE_TOPK = 60
+
 
 def _section_libraries(cfg: dict) -> list[str]:
     """Library section keys for a filter: `library_sections` (multi) with
@@ -203,6 +215,51 @@ def _sort_metas(metas: list[dict], sort: str) -> list[dict]:
     return present + missing
 
 
+def _as_epoch(v) -> int:
+    """Coerce a Plex addedAt/updatedAt (int seconds, occasionally a str) to int;
+    0 when absent/unparseable so it sorts to the bottom."""
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return 0
+
+
+async def _episode_added_map(libs: list[str], media_type: Optional[str]) -> list[tuple[str, int]]:
+    """Newest-episode add date per show as ``[(show_ratingKey, addedAt)]``, newest
+    first. Scans each library's most-recently-added episodes and rolls them up to
+    their grandparent show. Movie libraries contribute nothing (no episodes). This
+    is what lets the episode-aware sort resurface a series when a new episode lands,
+    since the show's own addedAt never changes after the series is first added."""
+    if media_type == "movie":
+        return []
+    newest: dict[str, int] = {}
+    for lib in libs:
+        data = await plex_get(
+            f"/library/sections/{lib}/all",
+            {"type": 4, "sort": "addedAt:desc", "X-Plex-Container-Start": 0,
+             "X-Plex-Container-Size": _EPISODE_ROLLUP_POOL},
+            cache_ttl=SECTION_CACHE_TTL,
+        )
+        for e in (data or {}).get("MediaContainer", {}).get("Metadata", []):
+            g = e.get("grandparentRatingKey")
+            if g is None:
+                continue
+            g = str(g)
+            a = _as_epoch(e.get("addedAt"))
+            if a > newest.get(g, 0):
+                newest[g] = a
+    return sorted(newest.items(), key=lambda kv: kv[1], reverse=True)
+
+
+async def _show_meta(rk: str) -> Optional[dict]:
+    """Full show Metadata for a ratingKey (guids included, for ratings). Back-fills a
+    recently-active show that an addedAt-sorted library query buried below the pool."""
+    data = await plex_get(f"/library/metadata/{rk}", {"includeGuids": 1},
+                          cache_ttl=SECTION_CACHE_TTL)
+    metas = (data or {}).get("MediaContainer", {}).get("Metadata", [])
+    return metas[0] if metas else None
+
+
 async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]:
     libs = _section_libraries(cfg)
     if not libs:
@@ -214,6 +271,12 @@ async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]
     media_type = cfg.get("media_type")
     if media_type in PLEX_TYPE:
         norm["type"] = PLEX_TYPE[media_type]
+
+    sort = (cfg.get("sort") or "addedAt:desc").strip()
+    # Episode-aware "recently added": rank by newest-episode date for shows so a
+    # series with a fresh episode resurfaces. Computed in Python below; the Plex
+    # query itself falls back to a plain addedAt sort.
+    episode_aware = sort == EPISODE_ADDED_SORT
 
     # Equality tag filters: `field=id,id` (OR within a field, AND across fields).
     # Each dimension uses the tags picked for this resolve (pool or random subset).
@@ -248,13 +311,19 @@ async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]
         ops.append(f"year>={cfg['released_after_year']}")
     if cfg.get("released_before_year") not in (None, ""):
         ops.append(f"year<={cfg['released_before_year']}")
-    if cfg.get("added_within_days") not in (None, "", 0, "0"):
-        ops.append(f"addedAt>={int(time.time() - int(cfg['added_within_days']) * 86400)}")
+    added_cutoff = None
+    _adw = cfg.get("added_within_days")
+    if _adw not in (None, "", 0, "0"):
+        added_cutoff = int(time.time() - int(_adw) * 86400)
+        # For the episode-aware sort the window is applied in Python against each
+        # item's effective (episode-aware) date; a native addedAt clause would
+        # wrongly drop a show whose series is old but just got a new episode.
+        if not episode_aware:
+            ops.append(f"addedAt>={added_cutoff}")
 
     # Score filtering uses the universal canonical rating (0-100), post-filtered here.
     rating_min = float(cfg["rating_min"]) if cfg.get("rating_min") not in (None, "") else None
 
-    sort = (cfg.get("sort") or "addedAt:desc").strip()
     show_limit = int(cfg.get("limit") or 30)        # how many to display
     randomize = bool(cfg.get("randomize"))
     trending = bool(cfg.get("trending"))            # keep only mdblist-popular titles
@@ -266,12 +335,13 @@ async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]
     rank_by_rating = sort in _COMBINED_SORTS
     norm["X-Plex-Container-Start"] = 0
     norm["includeGuids"] = 1
-    norm["sort"] = "audienceRating:desc" if rank_by_rating else sort
+    norm["sort"] = "audienceRating:desc" if rank_by_rating else (
+        "addedAt:desc" if episode_aware else sort)
     if trending:
         pool = 10000
     elif randomize:
         pool = int(cfg.get("query_limit") or 100)
-    elif rank_by_rating or rating_min is not None or country_titles or genre_primary_filter:
+    elif rank_by_rating or rating_min is not None or country_titles or genre_primary_filter or episode_aware:
         pool = min(max(show_limit * 5, 100), 500)
     else:
         pool = show_limit
@@ -296,6 +366,28 @@ async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]
             continue
         seen.add(rk)
         deduped.append(m)
+    # Episode-aware recency: roll episodes up to each show's newest-episode date,
+    # back-fill recently-active shows the addedAt query buried, then order the whole
+    # set by that effective date so new-episode series interleave with new movies.
+    # Done before the country/genre filters so back-filled shows are filtered too.
+    if episode_aware:
+        ep_added = await _episode_added_map(libs, media_type)
+        newest = dict(ep_added)
+        present = {str(m.get("ratingKey")) for m in deduped}
+        missing = [rk for rk, _ in ep_added[:_EPISODE_ACTIVE_TOPK] if rk not in present]
+        if missing:
+            fetched = await asyncio.gather(*[_show_meta(rk) for rk in missing])
+            deduped.extend(m for m in fetched if m)
+
+        def _eff_added(m: dict) -> int:
+            base = _as_epoch(m.get("addedAt"))
+            if m.get("type") == "show":
+                return max(base, newest.get(str(m.get("ratingKey")), 0))
+            return base
+
+        deduped.sort(key=_eff_added, reverse=True)
+        if added_cutoff is not None:
+            deduped = [m for m in deduped if _eff_added(m) >= added_cutoff]
     # Primary-country filter: the listing preserves country order, so Country[0]
     # is the genuine origin (co-production partners follow). Drop items whose
     # first country isn't one of the picked ones.
@@ -310,7 +402,8 @@ async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]
                    if genre_titles & {(g.get("tag") or "").lower()
                                       for g in (m.get("Genre") or [])[:genre_primary]}]
     # Plex sorts within each library; re-sort the merged set so order is global.
-    if multi and not randomize and not rank_by_rating:
+    # (episode_aware already ordered deduped by its effective date above.)
+    if multi and not randomize and not rank_by_rating and not episode_aware:
         deduped = _sort_metas(deduped, sort)
     items = await map_with_ratings(deduped)
 

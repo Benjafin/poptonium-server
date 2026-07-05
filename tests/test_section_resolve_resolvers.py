@@ -347,6 +347,70 @@ async def test_resolve_filter_multi_library_merge_dedupe_sort(isolate_db, monkey
     assert [it["rating_key"] for it in out] == ["dup", "c", "a"]
 
 
+async def test_resolve_filter_recently_added_mixes_movies_and_shows(isolate_db, monkeypatch):
+    # Mirrors the host "Recently Added" section config: both libraries, no media
+    # type, addedAt:desc, a display limit. Movies (lib 1) and whole shows (lib 2)
+    # interleave purely by addedAt, and the limit truncates to the newest N.
+    def route(path):
+        if "/sections/1/all" in path:
+            return _container([_meta("m1", "Movie Old", mtype="movie", tmdb=1, addedAt=10),
+                               _meta("m2", "Movie New", mtype="movie", tmdb=2, addedAt=40)])
+        if "/sections/2/all" in path:
+            return _container([_meta("s1", "Show Newest", mtype="show", tmdb=3, addedAt=50),
+                               _meta("s2", "Show Mid", mtype="show", tmdb=4, addedAt=30)])
+        return None
+
+    monkeypatch.setattr(sr, "plex_get", _Fake({"/all": route}))
+    out = await sr._resolve_filter({"library_sections": ["1", "2"],
+                                    "sort": "addedAt:desc", "limit": 3})
+    # Newest-first across both libraries, capped at the limit (drops "m1", addedAt=10).
+    assert [it["rating_key"] for it in out] == ["s1", "m2", "s2"]
+    assert {it["type"] for it in out} == {"movie", "show"}
+
+
+async def test_resolve_filter_episode_aware_sort_surfaces_new_episodes(isolate_db, monkeypatch):
+    # The episode-aware sort ranks a show by its NEWEST EPISODE's add date. A series
+    # added long ago (buried by a plain addedAt query) but with a brand-new episode
+    # must be back-filled from the roll-up and outrank recent movies/shows.
+    def route(path):
+        if "/library/metadata/" in path:                    # back-fill of the old series
+            rk = path.split("/library/metadata/")[1].split("?")[0]
+            return _container([_meta(rk, "Old Series", mtype="show", tmdb=99, addedAt=500)])
+        if "/sections/1/all" in path:
+            if "?" in path:                                 # base movie query
+                return _container([_meta("mNew", "Movie New", mtype="movie", tmdb=1, addedAt=5000),
+                                   _meta("mOld", "Movie Old", mtype="movie", tmdb=2, addedAt=1000)])
+            return _container([])                           # roll-up on a movie library: no episodes
+        if "/sections/2/all" in path:
+            if "?" in path:                                 # base show query (addedAt) buries "sOld"
+                return _container([_meta("sRecent", "Recent Series", mtype="show", tmdb=3, addedAt=4000)])
+            # episode roll-up: a brand-new episode (9000) for the old series, older one for sRecent
+            return _container([_meta("e1", "Ep", mtype="episode", grandparentRatingKey="sOld", addedAt=9000),
+                               _meta("e2", "Ep", mtype="episode", grandparentRatingKey="sRecent", addedAt=4000)])
+        return None
+
+    monkeypatch.setattr(sr, "plex_get", _Fake({"/library/": route}))
+    out = await sr._resolve_filter({"library_sections": ["1", "2"],
+                                    "sort": sr.EPISODE_ADDED_SORT, "limit": 10})
+    # Effective dates: sOld=max(500,9000)=9000, mNew=5000, sRecent=max(4000,4000)=4000, mOld=1000.
+    assert [it["rating_key"] for it in out] == ["sOld", "mNew", "sRecent", "mOld"]
+
+
+async def test_resolve_filter_episode_aware_movie_only_skips_rollup(isolate_db, monkeypatch):
+    # A movie-only section still accepts the episode-aware sort but does no episode
+    # roll-up or show back-fill (there are no shows), degrading to plain addedAt order.
+    fake = _Fake({"/library/": lambda p: (
+        _container([_meta("m1", "A", mtype="movie", tmdb=1, addedAt=3000),
+                    _meta("m2", "B", mtype="movie", tmdb=2, addedAt=1000)]) if "?" in p
+        else _container([]))})
+    monkeypatch.setattr(sr, "plex_get", fake)
+    out = await sr._resolve_filter({"library_sections": ["1"], "media_type": "movie",
+                                    "sort": sr.EPISODE_ADDED_SORT, "limit": 10})
+    assert [it["rating_key"] for it in out] == ["m1", "m2"]
+    # No episode roll-up (path ending /all) nor metadata back-fill was issued.
+    assert not any(c.endswith("/all") or "/library/metadata/" in c for c in fake.calls)
+
+
 # --------------------------------------------------------------------------- #
 # _resolve_sessions                                                           #
 # --------------------------------------------------------------------------- #
