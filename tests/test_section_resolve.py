@@ -116,3 +116,24 @@ def test_pick_tags_random_mode_picks_subset_count():
     out = sr._pick_tags(cfg)
     assert len(out["genres"]) == 2
     assert all(o in [{"id": str(i), "title": str(i)} for i in range(5)] for o in out["genres"])
+
+
+# ---- version gating (config-aware section_min_version / version_gte) ---------
+
+from app.config import section_min_version, version_gte  # noqa: E402
+
+
+def test_section_min_version_config_feature_floor():
+    # A plain filter/row renders on 1.0.0; enabling episode_items raises the floor.
+    assert section_min_version("filter", "row") == "1.0.0"
+    assert section_min_version("filter", "row", {}) == "1.0.0"
+    assert section_min_version("filter", "row", {"episode_items": False}) == "1.0.0"
+    assert section_min_version("filter", "row", {"episode_items": True}) == "1.1.0"
+
+
+def test_version_gte_pads_missing_components():
+    assert version_gte("1.1.0", "1.1.0")
+    assert version_gte("1.2", "1.1.0")
+    assert version_gte("1.1", "1.1.0")        # "1.1" == "1.1.0"
+    assert not version_gte("1.0.0", "1.1.0")
+    assert not version_gte("1.0", "1.1.0")

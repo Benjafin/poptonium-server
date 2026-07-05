@@ -16,7 +16,15 @@ from urllib.parse import urlencode
 
 import httpx
 
-from .config import MDBLIST_API_KEY, PLEX_TOKEN, PLEX_TYPE, log, section_min_version
+from .config import (
+    MDBLIST_API_KEY,
+    PLEX_TOKEN,
+    PLEX_TYPE,
+    SECTION_FEATURE_MIN_VERSION,
+    log,
+    section_min_version,
+    version_gte,
+)
 from .plex import (
     map_plex_item,
     plex_get,
@@ -262,6 +270,36 @@ def _as_epoch(v) -> int:
         return 0
 
 
+def _episode_item(m: dict) -> dict:
+    """Uniform item shape for an individual episode: the same fields as
+    ``map_plex_item`` plus an ``episode_label`` ("S3·E1 · Title"), with the SHOW as
+    the display title. ``_logo_rk`` is a transient grandparent key used to enrich the
+    show's clean art + clearLogo afterwards, then popped before returning."""
+    s, ep = m.get("parentIndex"), m.get("index")
+    se = f"S{s}·E{ep}" if s is not None and ep is not None else ""
+    etitle = m.get("title") or ""
+    label = (f"{se} · {etitle}" if se and etitle else (se or etitle)).strip()
+    return {
+        "rating_key": str(m.get("ratingKey", "")),
+        "tmdb_id": None,
+        "title": m.get("grandparentTitle") or m.get("title", ""),
+        "type": "episode",
+        "year": m.get("year"),
+        "thumb": m.get("thumb") or m.get("grandparentThumb"),
+        "art": m.get("art") or m.get("grandparentArt"),
+        "clear_logo": None,          # enriched from the show below
+        "summary": m.get("summary"),
+        "content_rating": m.get("contentRating"),
+        "added_at": _as_epoch(m.get("addedAt")),
+        "duration": m.get("duration"),
+        "child_count": None,
+        "rating": None,
+        "sources": {},
+        "episode_label": label,
+        "_logo_rk": str(m.get("grandparentRatingKey") or ""),
+    }
+
+
 async def _episode_added_map(libs: list[str], media_type: Optional[str]) -> list[tuple[str, int]]:
     """Newest-episode add date per show as ``[(show_ratingKey, addedAt)]``, newest
     first. Scans each library's most-recently-added episodes and rolls them up to
@@ -302,6 +340,11 @@ async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]
     libs = _section_libraries(cfg)
     if not libs:
         return []
+    # Episode granularity: list individual recently-added episodes (+ movies) rather
+    # than whole shows. Gated per-client in resolve_section (older apps get the flag
+    # turned off and fall back to the show-level path below).
+    if cfg.get("episode_items"):
+        return await _resolve_filter_episodes(cfg, libs)
     if picks is None:
         picks = _pick_tags(cfg)
 
@@ -461,6 +504,68 @@ async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]
         items.sort(key=lambda it: popular_rank.get(it.get("tmdb_id"), 99999))  # by popularity
 
     return items[:show_limit]
+
+
+async def _resolve_filter_episodes(cfg: dict, libs: list[str]) -> list[dict]:
+    """Episode-granular variant of a filter section: individual recently-added
+    episodes (from show libraries) merged with recently-added movies (from movie
+    libraries), newest first. Movies keep their rating badges; episodes render as
+    episode cards. Honors `media_type` and `added_within_days`; tag/rating filters
+    don't apply here (this is the recency shelf)."""
+    media_type = cfg.get("media_type")
+    show_limit = int(cfg.get("limit") or 30)
+    pool = min(max(show_limit * 5, 100), 500)
+
+    added_cutoff = None
+    _adw = cfg.get("added_within_days")
+    if _adw not in (None, "", 0, "0"):
+        added_cutoff = int(time.time() - int(_adw) * 86400)
+
+    items: list[dict] = []
+
+    # Recently-added movies (movie libraries return nothing for the episode query and
+    # vice-versa, so both queries can run against every library).
+    if media_type in (None, "movie"):
+        mq = urlencode({"type": 1, "sort": "addedAt:desc", "includeGuids": 1,
+                        "X-Plex-Container-Start": 0, "X-Plex-Container-Size": pool})
+        movie_metas: list[dict] = []
+        for lib in libs:
+            data = await plex_get(f"/library/sections/{lib}/all?{mq}", cache_ttl=SECTION_CACHE_TTL)
+            if data:
+                movie_metas.extend(data.get("MediaContainer", {}).get("Metadata", []))
+        items.extend(await map_with_ratings(movie_metas))
+
+    # Recently-added individual episodes (show libraries).
+    if media_type in (None, "show"):
+        eq = urlencode({"type": 4, "sort": "addedAt:desc",
+                        "X-Plex-Container-Start": 0, "X-Plex-Container-Size": pool})
+        for lib in libs:
+            data = await plex_get(f"/library/sections/{lib}/all?{eq}", cache_ttl=SECTION_CACHE_TTL)
+            if data:
+                for m in data.get("MediaContainer", {}).get("Metadata", []):
+                    items.append(_episode_item(m))
+
+    # Merge by recency, apply the "added within" window, then trim to the limit.
+    items.sort(key=lambda it: it.get("added_at") or 0, reverse=True)
+    if added_cutoff is not None:
+        items = [it for it in items if (it.get("added_at") or 0) >= added_cutoff]
+    items = items[:show_limit]
+
+    # Enrich episode cards with the show's clean backdrop + clearLogo (like history);
+    # the episode metadata only carries the episode still and no logo.
+    uniq = list({it["_logo_rk"] for it in items if it.get("_logo_rk")})
+    if uniq:
+        fetched = await asyncio.gather(*[_art_logo_for(r) for r in uniq])
+        fmap = dict(zip(uniq, fetched))
+        for it in items:
+            if it.get("type") == "episode":
+                f = fmap.get(it.get("_logo_rk", "")) or {}
+                if f.get("art"):
+                    it["art"] = f["art"]
+                it["clear_logo"] = f.get("logo")
+    for it in items:
+        it.pop("_logo_rk", None)
+    return items
 
 
 # ---------- Sessions section ("Who's watching") ----------
@@ -703,11 +808,19 @@ async def _resolve_history(cfg: dict) -> list[dict]:
 
 # ---------- Dispatch ----------
 
-async def resolve_section(row) -> dict:
+async def resolve_section(row, client_schema: str = "1.0.0") -> dict:
     try:
         cfg = json.loads(row["config"])
     except Exception:
         cfg = {}
+    # Graceful degradation: turn OFF any opt-in feature the requesting client is too
+    # old to render, so it gets the same section in its supported form (e.g. whole
+    # shows instead of episode cards) rather than the section being skipped entirely.
+    # The served `min_app_version` (below) is then computed from this degraded cfg, so
+    # it never exceeds what we actually sent -> the client won't drop it.
+    for flag, floor in SECTION_FEATURE_MIN_VERSION.items():
+        if cfg.get(flag) and not version_gte(client_schema, floor):
+            cfg = {**cfg, flag: False}
     # Pick tags once so the filter query and the title/subtitle templates agree.
     picks = _pick_tags(cfg) if row["type"] == "filter" else {}
     # Resolve library display names only when a `{library}` placeholder is used.
@@ -732,7 +845,7 @@ async def resolve_section(row) -> dict:
         "style": row["style"],
         "position": row["position"],
         "sort_order": row["sort_order"],
-        # Derived from type/style (not stored): the min app version that can render it.
-        "min_app_version": section_min_version(row["type"], row["style"]),
+        # Derived from type/style/config (not stored): min app version to render it.
+        "min_app_version": section_min_version(row["type"], row["style"], cfg),
         "items": items,
     }

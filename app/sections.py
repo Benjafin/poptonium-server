@@ -9,15 +9,20 @@ import json
 import time
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from .auth import require_admin
-from .config import section_min_version
+from .config import SECTION_SCHEMA_VERSION, section_min_version
 from .db import get_db
 from .section_resolve import resolve_section
 
 router = APIRouter()
+
+# The app announces the section-rendering contract it understands via this header
+# on /sections[/resolved]; absent (older builds) means the original 1.0.0 contract.
+# The server uses it to serve each section in the client's supported form.
+CLIENT_SCHEMA_HEADER = "X-Poptonium-Client-Schema"
 
 
 class SectionPayload(BaseModel):
@@ -42,6 +47,10 @@ class ReorderItem(BaseModel):
 
 
 def _section_to_dict(row, include_config: bool = True) -> dict:
+    try:
+        cfg = json.loads(row["config"])
+    except Exception:
+        cfg = {}
     d = {
         "id": row["id"],
         "title": row["title"],
@@ -51,14 +60,11 @@ def _section_to_dict(row, include_config: bool = True) -> dict:
         "position": row["position"],
         "sort_order": row["sort_order"],
         "enabled": bool(row["enabled"]),
-        # Derived from type/style (not stored): the min app version that can render it.
-        "min_app_version": section_min_version(row["type"], row["style"]),
+        # Derived from type/style/config (not stored): min app version to render it.
+        "min_app_version": section_min_version(row["type"], row["style"], cfg),
     }
     if include_config:
-        try:
-            d["config"] = json.loads(row["config"])
-        except Exception:
-            d["config"] = {}
+        d["config"] = cfg
     return d
 
 
@@ -76,8 +82,10 @@ async def list_sections():
 
 
 @router.get("/sections/resolved")
-async def resolved_sections():
-    """Client endpoint: enabled sections, each with items resolved from Plex."""
+async def resolved_sections(request: Request):
+    """Client endpoint: enabled sections, each with items resolved from Plex, in the
+    form the requesting client supports (per its announced schema header)."""
+    client_schema = request.headers.get(CLIENT_SCHEMA_HEADER, "1.0.0")
     db = await get_db()
     try:
         cursor = await db.execute(
@@ -86,7 +94,7 @@ async def resolved_sections():
         rows = await cursor.fetchall()
     finally:
         await db.close()
-    sections = await asyncio.gather(*[resolve_section(r) for r in rows])
+    sections = await asyncio.gather(*[resolve_section(r, client_schema) for r in rows])
     return {"sections": list(sections)}
 
 
@@ -173,4 +181,5 @@ async def preview_section(section_id: int):
         await db.close()
     if not row:
         raise HTTPException(404, "Section not found")
-    return await resolve_section(row)
+    # Admin preview shows the newest representation (e.g. episode cards).
+    return await resolve_section(row, SECTION_SCHEMA_VERSION)

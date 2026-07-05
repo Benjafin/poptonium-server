@@ -774,3 +774,67 @@ async def test_resolve_section_unknown_type_and_bad_config():
     out = await sr.resolve_section(row)
     assert out["items"] == []
     assert out["type"] == "mystery"
+
+
+# --------------------------------------------------------------------------- #
+# episode_items (episode-granular filter)                                     #
+# --------------------------------------------------------------------------- #
+
+async def test_resolve_filter_episodes_merges_movies_and_episodes(isolate_db, monkeypatch):
+    # episode_items lists individual episodes (from show libs) merged with movies
+    # (from movie libs), newest first, with an episode_label and the show as title.
+    def route(path):
+        if "/library/metadata/" in path:                    # show art/logo enrichment
+            return _container([{"art": "/show-art", "Image": [{"type": "clearLogo", "url": "/logo"}]}])
+        if "/sections/1/all" in path and "type=1" in path:  # movies
+            return _container([_meta("m1", "Movie New", mtype="movie", tmdb=1, addedAt=500)])
+        if "/sections/2/all" in path and "type=4" in path:  # episodes
+            return _container([
+                _meta("e9", "Finale", mtype="episode", addedAt=900,
+                      grandparentTitle="Silo", grandparentRatingKey="900", parentIndex=3, index=1),
+                _meta("e5", "Mid", mtype="episode", addedAt=300,
+                      grandparentTitle="Silo", grandparentRatingKey="900", parentIndex=2, index=4),
+            ])
+        return None
+
+    monkeypatch.setattr(sr, "plex_get", _Fake({"/library/": route}))
+    out = await sr._resolve_filter_episodes({"library_sections": ["1", "2"], "limit": 10}, ["1", "2"])
+    # Newest first across movies + episodes: e9(900), m1(500), e5(300).
+    assert [it["rating_key"] for it in out] == ["e9", "m1", "e5"]
+    ep = out[0]
+    assert ep["type"] == "episode"
+    assert ep["title"] == "Silo"                 # show name is the display title
+    assert ep["episode_label"] == "S3·E1 · Finale"
+    assert ep["clear_logo"] == "/logo"           # enriched from the show
+    assert "_logo_rk" not in ep                   # transient key stripped
+
+
+async def test_resolve_section_episode_items_degrades_by_client(isolate_db, monkeypatch):
+    # Same section: an old client gets whole shows (flag off, min 1.0.0); a new
+    # client gets individual episodes (flag honored, min 1.1.0).
+    def route(path):
+        if "/library/metadata/" in path:
+            return _container([{"art": None, "Image": []}])
+        if "/sections/2/all" in path:
+            if "type=4" in path:     # episode-mode episode query (new client)
+                return _container([_meta("e1", "Ep", mtype="episode", addedAt=900,
+                                         grandparentTitle="Silo", grandparentRatingKey="900",
+                                         parentIndex=1, index=1)])
+            if "type=1" in path:     # episode-mode movie query on a show lib -> none
+                return _container([])
+            return _container([_meta("900", "Silo", mtype="show", tmdb=7, addedAt=800)])  # show mode
+        return None
+
+    monkeypatch.setattr(sr, "plex_get", _Fake({"/library/": route}))
+    cfg = json.dumps({"library_sections": ["2"], "sort": "addedAt:desc",
+                      "episode_items": True, "limit": 10})
+    row = _row(type="filter", config=cfg)
+
+    old = await sr.resolve_section(row, client_schema="1.0.0")
+    assert old["min_app_version"] == "1.0.0"
+    assert [it["type"] for it in old["items"]] == ["show"]
+
+    new = await sr.resolve_section(row, client_schema="1.1.0")
+    assert new["min_app_version"] == "1.1.0"
+    assert [it["type"] for it in new["items"]] == ["episode"]
+    assert new["items"][0]["episode_label"] == "S1·E1 · Ep"

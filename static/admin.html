@@ -870,6 +870,12 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
             <span class="toggle"><input type="checkbox" id="f-randomize" onchange="onRandomizeChange()"><span></span></span>
             <span>Shuffle: a random pick each visit</span></label>
         </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:9px;cursor:pointer">
+            <span class="toggle"><input type="checkbox" id="f-episode-items"><span></span></span>
+            <span>Surface individual episodes (instead of whole shows)</span></label>
+          <div class="hint">Lists each newly added episode as its own card. Apps too old to draw episode cards fall back to whole shows automatically.</div>
+        </div>
         <div class="field hidden" id="grp-query-limit"><label>Pool to shuffle from</label>
           <div class="slider-row"><input type="range" id="f-query-limit" min="1" max="500" step="10" value="100"><span class="slider-val" id="f-query-limit-v">100</span></div>
           <div class="hint">Fetch this many by the sort/filters, then show a random “items shown” of them.</div></div>
@@ -1802,6 +1808,7 @@ async function openEditor(existing){
   $("f-ybefore").value = cfg.released_before_year ?? "";
   $("f-trending").checked = !!cfg.trending;
   $("f-randomize").checked = !!cfg.randomize;
+  $("f-episode-items").checked = !!cfg.episode_items;
   setSlider("f-query-limit", cfg.query_limit||100);
 
   // dimension token pickers
@@ -1993,6 +2000,7 @@ function collectPayload(){
     DIMS.forEach(d=>{ const all=mergedTags(d); cfg[d]=all.filter(x=>STATE.selected[d].has(x.id)).map(x=>({id:x.id,title:x.title})); cfg[`${d}_mode`]=getDimMode(d); cfg[`${d}_pick`]=num($(`f-${d}-pick`).value)||1; });
     const gp=num($("f-genres-primary").value); cfg.genre_primary_count=gp==null?3:gp;
     cfg.trending=$("f-trending").checked;
+    cfg.episode_items=$("f-episode-items").checked;
   }
   return { title:$("f-title").value.trim(), subtitle:$("f-subtitle").value.trim()||null,
     type:t, style:segGet("f-style"), enabled:$("f-enabled").checked, sort_order:0, config:cfg };

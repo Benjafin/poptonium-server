@@ -40,7 +40,7 @@ SERVICE_VERSION = "1.0.0"
 # it (derived from its type/style below, never stored or user-set); a client whose
 # own section-schema version is lower skips that section rather than mis-rendering
 # it. Bump this whenever a new section type/style ships that older apps can't draw.
-SECTION_SCHEMA_VERSION = "1.0.0"
+SECTION_SCHEMA_VERSION = "1.1.0"
 
 # The min app version required to render a section, keyed by its type and its
 # style. A section's floor is the highest of the two. Everything we support today
@@ -59,21 +59,40 @@ SECTION_STYLE_MIN_VERSION = {
     "hero": "1.0.0",
     "bento": "1.0.0",
 }
+# Opt-in config FEATURES that need a newer client than the section's type/style
+# alone (e.g. a filter section can render on 1.0.0, but not once it emits individual
+# episode cards). Keyed by the cfg flag that enables the feature; a section using
+# one is stamped with the higher floor so older apps skip it instead of mis-drawing.
+SECTION_FEATURE_MIN_VERSION = {
+    "episode_items": "1.1.0",   # lists individual episodes, not whole shows
+}
 
 
 def _version_key(v: str):
     return tuple(int(x) if x.isdigit() else 0 for x in v.split("."))
 
 
-def section_min_version(section_type: str, style: str) -> str:
-    """Min app version that can render a section of this type+style. Unknown
-    type/style defaults to the current schema version, so a future type added in
-    code without an explicit entry still fails safe (old apps skip it)."""
+def section_min_version(section_type: str, style: str, config: dict = None) -> str:
+    """Min app version that can render a section of this type+style, raised by any
+    opt-in config feature it uses. Unknown type/style defaults to the current schema
+    version, so a future type added in code without an explicit entry still fails
+    safe (old apps skip it)."""
     floors = [
         SECTION_TYPE_MIN_VERSION.get(section_type, SECTION_SCHEMA_VERSION),
         SECTION_STYLE_MIN_VERSION.get(style, SECTION_SCHEMA_VERSION),
     ]
+    for flag, floor in SECTION_FEATURE_MIN_VERSION.items():
+        if config and config.get(flag):
+            floors.append(floor)
     return max(floors, key=_version_key)
+
+
+def version_gte(a: str, b: str) -> bool:
+    """Dotted-version >= compare, zero-padding missing components ("1.1" == "1.1.0")."""
+    pa = [int(x) if x.isdigit() else 0 for x in (a or "0").split(".")]
+    pb = [int(x) if x.isdigit() else 0 for x in (b or "0").split(".")]
+    n = max(len(pa), len(pb))
+    return pa + [0] * (n - len(pa)) >= pb + [0] * (n - len(pb))
 
 # Rating sources we support, in canonical id form. mdblist keys: tomatoes=RT
 # critic, popcorn=RT audience; "mdblist" is the item-level aggregate score.
