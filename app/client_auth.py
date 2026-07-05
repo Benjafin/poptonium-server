@@ -118,6 +118,10 @@ async def plex_user_identity(token: str) -> Optional[dict]:
         log.warning("Plex identity resolution failed: %s", e)
         return None
     if resp.status_code != 200:
+        # A token can have Plex SERVER access yet be rejected by plex.tv (e.g. a
+        # server-scoped or managed token), which blocks per-user attribution.
+        log.info("Plex identity: plex.tv /api/v2/user -> %s for token %s… (no attribution)",
+                 resp.status_code, _digest(token)[:8])
         return None
     try:
         data = resp.json()

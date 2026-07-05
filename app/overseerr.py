@@ -127,6 +127,7 @@ async def _overseerr_user_id_for(token: str) -> Optional[int]:
     can't be matched or imported (caller falls back to owner attribution)."""
     identity = await plex_user_identity(token)
     if not identity:
+        log.info("Overseerr attribution: caller's Plex identity did not resolve (plex.tv)")
         return None
     plex_id = identity.get("plex_id")
     email = identity.get("email")
@@ -134,6 +135,7 @@ async def _overseerr_user_id_for(token: str) -> Optional[int]:
     by_plex_id, by_email = await _overseerr_user_maps()
     uid = _match_user(by_plex_id, by_email, plex_id, email)
     if uid is not None:
+        log.info("Overseerr attribution: matched Plex user %s -> Overseerr user %s", plex_id, uid)
         return uid
 
     # Not in Overseerr yet — import them from the Plex server, then re-resolve.
@@ -143,6 +145,8 @@ async def _overseerr_user_id_for(token: str) -> Optional[int]:
             _user_cache["expiry"] = 0.0  # bust cache so later lookups see the new user
             log.info("Imported Plex user %s into Overseerr as user %s", plex_id, imported)
             return imported
+    log.info("Overseerr attribution: Plex user plex_id=%s (has_email=%s) not in Overseerr and not importable",
+             plex_id, bool(email))
     return None
 
 
