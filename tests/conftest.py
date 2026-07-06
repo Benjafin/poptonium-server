@@ -30,5 +30,6 @@ def _reset_caches():
     client_auth._token_cache.clear()
     client_auth._account_cache.clear()
     client_auth._identity_cache.clear()
+    client_auth._shared_map_cache.update(expiry=0.0, by_digest={})
     overseerr._user_cache.update(expiry=0.0, by_plex_id={}, by_email={})
     yield

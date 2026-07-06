@@ -13,12 +13,13 @@ validate and the gate fails CLOSED (returns 503).
 """
 
 import hashlib
+import re
 import time
 from typing import Optional
 
 from fastapi import HTTPException, Request
 
-from .config import PLEX_TV_USER_URL, PLEX_URL, log
+from .config import PLEX_TOKEN, PLEX_TV_USER_URL, PLEX_URL, log
 from .http_client import http_client
 from .plex import plex_configured
 
@@ -29,6 +30,18 @@ _token_cache: dict[str, float] = {}            # sha256(token) -> expiry
 _account_cache: dict[str, tuple[float, str]] = {}  # sha256(token) -> (expiry, account_id)
 _identity_cache: dict[str, tuple[float, dict]] = {}  # sha256(token) -> (expiry, identity)
 _CACHE_MAX = 4096
+
+# The iOS client authenticates each user with their *server-scoped* Plex access
+# token. That token authorizes against the PMS (so validate_plex_token passes) but
+# plex.tv rejects it (401), so plex_user_identity() below can't identify the caller
+# for Overseerr attribution. The owner's shared-users list DOES expose, per user,
+# that same access token alongside their numeric Plex account id (which equals the
+# Overseerr ``plexId``) and email — so we build a local token-digest -> identity map
+# from it and resolve callers against it first, falling back to plex.tv only for
+# tokens not present (e.g. a genuine account token). Sharing changes rarely, so the
+# map is cached for a long window.
+_SHARED_MAP_TTL = 600  # seconds
+_shared_map_cache: dict = {"expiry": 0.0, "by_digest": {}}
 
 
 def _digest(token: str) -> str:
@@ -135,6 +148,78 @@ async def plex_user_identity(token: str) -> Optional[dict]:
         _identity_cache.clear()
     _identity_cache[key] = (time.time() + _VALID_TTL, identity)
     return identity
+
+
+def _shared_attr(tag: str, name: str) -> Optional[str]:
+    m = re.search(name + r'="([^"]*)"', tag)
+    return m.group(1) if m else None
+
+
+async def _plex_shared_identity_map() -> dict[str, dict]:
+    """Map ``sha256(token) -> {"plex_id": int, "email": str|None}`` for every user
+    shared to this server (plus the owner), built from the owner's plex.tv
+    shared-servers list. Cached; on any failure the previous map (possibly empty)
+    is returned so a transient blip just falls back to per-token resolution."""
+    now = time.time()
+    if _shared_map_cache["expiry"] > now and _shared_map_cache["by_digest"]:
+        return _shared_map_cache["by_digest"]
+
+    by_digest: dict[str, dict] = {}
+    try:
+        idr = await http_client().get(
+            f"{PLEX_URL}/identity",
+            headers={"X-Plex-Token": PLEX_TOKEN, "Accept": "application/json"},
+            timeout=8,
+        )
+        machine_id = idr.json().get("MediaContainer", {}).get("machineIdentifier")
+
+        # The owner's own token is a real account token — resolve it directly so
+        # the owner's own requests attribute correctly too.
+        owner = await plex_user_identity(PLEX_TOKEN)
+        if owner and owner.get("plex_id") is not None:
+            by_digest[_digest(PLEX_TOKEN)] = owner
+
+        if machine_id:
+            resp = await http_client().get(
+                f"https://plex.tv/api/servers/{machine_id}/shared_servers",
+                headers={"X-Plex-Token": PLEX_TOKEN},
+                timeout=15,
+            )
+            if resp.status_code == 200:
+                for m in re.finditer(r"<SharedServer\b[^>]*>", resp.text):
+                    tag = m.group(0)
+                    access = _shared_attr(tag, "accessToken")
+                    user_id = _shared_attr(tag, "userID")
+                    if not access or not user_id:
+                        continue
+                    try:
+                        plex_id = int(user_id)
+                    except (TypeError, ValueError):
+                        continue
+                    email = (_shared_attr(tag, "email") or "").strip().lower() or None
+                    by_digest[_digest(access)] = {"plex_id": plex_id, "email": email}
+            else:
+                log.error("Plex shared_servers list failed: %s", resp.status_code)
+    except Exception as e:
+        log.warning("Plex shared-identity map build failed: %s", e)
+
+    if by_digest:
+        _shared_map_cache.update(expiry=now + _SHARED_MAP_TTL, by_digest=by_digest)
+        return by_digest
+    return _shared_map_cache["by_digest"]
+
+
+async def resolve_caller_identity(token: str) -> Optional[dict]:
+    """Resolve the requesting caller's Plex identity (``{"plex_id", "email"}``) for
+    Overseerr attribution. Tries the local shared-users map first — this is what
+    handles the server-scoped access tokens the client actually sends — then falls
+    back to the plex.tv account lookup for a full account token not in that map."""
+    if not token:
+        return None
+    mapped = (await _plex_shared_identity_map()).get(_digest(token))
+    if mapped is not None:
+        return mapped
+    return await plex_user_identity(token)
 
 
 async def plex_user_can_access(token: str, rating_key: str) -> bool:

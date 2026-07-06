@@ -9,7 +9,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from .client_auth import plex_user_identity, require_plex_user, require_plex_user_token
+from .client_auth import resolve_caller_identity, require_plex_user, require_plex_user_token
 from .config import OVERSEERR_API_KEY, OVERSEERR_URL, log
 
 router = APIRouter()
@@ -125,9 +125,10 @@ async def _overseerr_user_id_for(token: str) -> Optional[int]:
     the request is attributed to them rather than to the API-key owner. Imports the
     user into Overseerr on first sight when possible. Returns None when the caller
     can't be matched or imported (caller falls back to owner attribution)."""
-    identity = await plex_user_identity(token)
+    identity = await resolve_caller_identity(token)
     if not identity:
-        log.info("Overseerr attribution: caller's Plex identity did not resolve (plex.tv)")
+        log.info("Overseerr attribution: caller's Plex identity did not resolve "
+                 "(neither shared-users map nor plex.tv)")
         return None
     plex_id = identity.get("plex_id")
     email = identity.get("email")

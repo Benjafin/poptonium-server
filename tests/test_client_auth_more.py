@@ -121,6 +121,118 @@ async def test_plex_user_identity_bad_json():
     assert await client_auth.plex_user_identity("tok") is None
 
 
+# ---- resolve_caller_identity / shared-users identity map --------------------
+
+def _mock_shared_map(machine_id="m123", shared=(), owner=None):
+    """Mock the upstream calls that build the shared-users identity map:
+    {PLEX_URL}/identity (machineIdentifier), plex.tv /api/v2/user (owner token),
+    and plex.tv shared_servers (per-user XML with server access tokens)."""
+    respx.get(f"{PLEX_URL}/identity").mock(
+        return_value=httpx.Response(200, json={"MediaContainer": {"machineIdentifier": machine_id}})
+    )
+    respx.get(PLEX_TV_USER_URL).mock(
+        return_value=httpx.Response(200, json=owner) if owner else httpx.Response(401)
+    )
+    rows = "".join(
+        f'<SharedServer userID="{u["userID"]}" email="{u.get("email", "")}" '
+        f'accessToken="{u["accessToken"]}"/>'
+        for u in shared
+    )
+    respx.get(f"https://plex.tv/api/servers/{machine_id}/shared_servers").mock(
+        return_value=httpx.Response(200, text=f"<MediaContainer>{rows}</MediaContainer>")
+    )
+
+
+@respx.mock
+async def test_resolve_caller_identity_from_shared_map():
+    # A server-scoped access token that plex.tv rejects (401) still resolves via
+    # the owner's shared-users map (email is normalised to lowercase).
+    _mock_shared_map(shared=[{"userID": "468981220", "email": "Bram@Example.com",
+                              "accessToken": "srv-tok"}])
+    identity = await client_auth.resolve_caller_identity("srv-tok")
+    assert identity == {"plex_id": 468981220, "email": "bram@example.com"}
+
+
+@respx.mock
+async def test_resolve_caller_identity_owner_token():
+    _mock_shared_map(owner={"id": 111, "email": "owner@x.com"})
+    identity = await client_auth.resolve_caller_identity("admin-token")
+    assert identity == {"plex_id": 111, "email": "owner@x.com"}
+
+
+@respx.mock
+async def test_resolve_caller_identity_falls_back_to_plextv():
+    # A token not present in the shared map falls back to the plex.tv account
+    # lookup (here the mocked account endpoint resolves any token to id 111).
+    _mock_shared_map(owner={"id": 111, "email": "owner@x.com"},
+                     shared=[{"userID": "5", "accessToken": "someone-else"}])
+    identity = await client_auth.resolve_caller_identity("full-account-tok")
+    assert identity["plex_id"] == 111
+
+
+@respx.mock
+async def test_resolve_caller_identity_empty_token():
+    assert await client_auth.resolve_caller_identity("") is None
+
+
+@respx.mock
+async def test_shared_map_swallows_build_exception():
+    # A network error while building the map is swallowed; resolution falls back
+    # to the plex.tv lookup (also failing here) and returns None rather than raising.
+    respx.get(f"{PLEX_URL}/identity").mock(side_effect=httpx.ConnectError("boom"))
+    respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
+    assert await client_auth.resolve_caller_identity("x") is None
+
+
+@respx.mock
+async def test_shared_map_handles_shared_servers_error():
+    # A non-200 from the shared_servers list yields no identities; an unknown token
+    # then also fails the plex.tv fallback and resolves to None.
+    respx.get(f"{PLEX_URL}/identity").mock(
+        return_value=httpx.Response(200, json={"MediaContainer": {"machineIdentifier": "m"}})
+    )
+    respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
+    respx.get("https://plex.tv/api/servers/m/shared_servers").mock(
+        return_value=httpx.Response(500)
+    )
+    assert await client_auth.resolve_caller_identity("whatever") is None
+
+
+@respx.mock
+async def test_shared_map_skips_malformed_rows():
+    respx.get(f"{PLEX_URL}/identity").mock(
+        return_value=httpx.Response(200, json={"MediaContainer": {"machineIdentifier": "m"}})
+    )
+    respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
+    xml = (
+        "<MediaContainer>"
+        '<SharedServer userID="5"/>'                     # no accessToken -> skipped
+        '<SharedServer userID="abc" accessToken="t1"/>'  # non-numeric userID -> skipped
+        '<SharedServer userID="9" accessToken="good"/>'  # valid
+        "</MediaContainer>"
+    )
+    respx.get("https://plex.tv/api/servers/m/shared_servers").mock(
+        return_value=httpx.Response(200, text=xml)
+    )
+    assert (await client_auth.resolve_caller_identity("good"))["plex_id"] == 9
+    assert await client_auth.resolve_caller_identity("t1") is None  # malformed row not mapped
+
+
+@respx.mock
+async def test_shared_map_cached_after_first_build():
+    id_route = respx.get(f"{PLEX_URL}/identity").mock(
+        return_value=httpx.Response(200, json={"MediaContainer": {"machineIdentifier": "m1"}})
+    )
+    respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
+    respx.get("https://plex.tv/api/servers/m1/shared_servers").mock(
+        return_value=httpx.Response(
+            200, text='<MediaContainer><SharedServer userID="7" accessToken="t7"/></MediaContainer>')
+    )
+    assert (await client_auth.resolve_caller_identity("t7"))["plex_id"] == 7
+    await client_auth.resolve_caller_identity("t7")
+    assert id_route.call_count == 1  # second resolve served from the cached map
+
+
 # ---- plex_user_can_access ---------------------------------------------------
 
 async def test_plex_user_can_access_missing_args():

@@ -71,7 +71,26 @@ async def test_returns_none_when_not_matchable_and_import_empty():
 @respx.mock
 async def test_returns_none_when_identity_unresolvable():
     respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
+    # No shared-users map available either (upstream calls unmocked -> map empty).
     assert await overseerr._overseerr_user_id_for("caller-tok") is None
+
+
+@respx.mock
+async def test_attributes_server_scoped_token_via_shared_map():
+    # The real-world bug: the client sends a server-scoped access token that
+    # plex.tv rejects (401). Attribution must still resolve the user via the
+    # owner's shared-users map and match them to their Overseerr account.
+    respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
+    respx.get(f"{PLEX_URL}/identity").mock(
+        return_value=httpx.Response(200, json={"MediaContainer": {"machineIdentifier": "m"}})
+    )
+    respx.get("https://plex.tv/api/servers/m/shared_servers").mock(
+        return_value=httpx.Response(
+            200, text='<MediaContainer><SharedServer userID="468981220" '
+                      'email="bram@x.com" accessToken="srv-tok"/></MediaContainer>')
+    )
+    _mock_user_list([{"id": 6, "plexId": 468981220, "email": "bram@x.com"}])
+    assert await overseerr._overseerr_user_id_for("srv-tok") == 6
 
 
 # ---- endpoint-level: POST /overseerr/request --------------------------------
