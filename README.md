@@ -17,6 +17,15 @@ Companion backend for the Poptonium Plex client. A single small container that p
 blank to disable that feature, the rest keeps working. With no mdblist key the service runs fine,
 it just serves no ratings and an empty popular feed.
 
+## The apps
+
+Poptonium is a Plex client for [iOS](https://apps.apple.com/nl/app/poptonium-for-plex/id6779742766?l=en-GB)
+and [Android](https://play.google.com/store/apps/details?id=games.benja.poptonium). This repo is the
+optional companion backend they connect to.
+
+The clients are built with extensive casting support: **Chromecast / Google Cast**
+integration with great remote control and the right codec profiles.
+
 ## Install
 
 The app listens on container port **8085** and persists everything (the SQLite cache and your
