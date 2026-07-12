@@ -10,12 +10,12 @@ import time
 from typing import Optional
 from urllib.parse import urlencode
 
-from .config import PLEX_TOKEN, PLEX_URL, log
+from .config import log, settings
 from .http_client import http_client
 
 
 def plex_configured() -> bool:
-    return bool(PLEX_URL and PLEX_TOKEN)
+    return bool(settings.PLEX_URL and settings.PLEX_TOKEN)
 
 
 # Short-lived cache of the reachability probe so the boot gate / status polls
@@ -24,8 +24,17 @@ _reachable_cache: tuple[float, bool] | None = None
 _REACHABLE_TTL = 15  # seconds
 
 
+def reset_reachable_cache() -> None:
+    """Drop the cached reachability probe so the next check re-hits Plex. Called
+    when the Plex credentials change in the admin UI, so the gate re-evaluates now."""
+    global _reachable_cache
+    _reachable_cache = None
+
+
 async def plex_reachable() -> bool:
-    """True only if Plex is configured AND answers an authorized /identity probe."""
+    """True only if Plex is configured AND a valid token authorizes a probe. Hits the
+    server root (``/``), which requires auth — unlike ``/identity``, which any token
+    (even a bogus one) can read, so it can't tell a good token from a bad one."""
     global _reachable_cache
     if not plex_configured():
         return False
@@ -34,7 +43,7 @@ async def plex_reachable() -> bool:
     ok = False
     try:
         r = await http_client().get(
-            f"{PLEX_URL}/identity", headers={"X-Plex-Token": PLEX_TOKEN}, timeout=5
+            f"{settings.PLEX_URL}/", headers={"X-Plex-Token": settings.PLEX_TOKEN}, timeout=5
         )
         ok = r.status_code == 200
     except Exception:
@@ -73,9 +82,9 @@ async def plex_get(path: str, params: dict | None = None, cache_ttl: float = 0) 
         # httpx rebuild the query and DROP any query string already in `path`
         # (which is how filter operator clauses like `addedAt>=` are passed).
         resp = await http_client().get(
-            f"{PLEX_URL}{path}",
+            f"{settings.PLEX_URL}{path}",
             params=params,
-            headers={"X-Plex-Token": PLEX_TOKEN, "Accept": "application/json"},
+            headers={"X-Plex-Token": settings.PLEX_TOKEN, "Accept": "application/json"},
             timeout=15,
         )
         if resp.status_code != 200:
@@ -145,10 +154,10 @@ async def plex_upload_subtitle(rating_key: str, content: bytes, language: str, f
     params = {"language": language, "format": fmt, "title": title}
     try:
         resp = await http_client().post(
-            f"{PLEX_URL}/library/metadata/{rating_key}/subtitles",
+            f"{settings.PLEX_URL}/library/metadata/{rating_key}/subtitles",
             params=params,
             content=content,
-            headers={"X-Plex-Token": PLEX_TOKEN, "Accept": "text/plain, */*"},
+            headers={"X-Plex-Token": settings.PLEX_TOKEN, "Accept": "text/plain, */*"},
             timeout=30,
         )
         if resp.status_code not in (200, 201):

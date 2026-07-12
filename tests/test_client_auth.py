@@ -4,18 +4,18 @@ import httpx
 import respx
 
 from app import client_auth
-from app.config import PLEX_TV_USER_URL, PLEX_URL
+from app.config import PLEX_TV_USER_URL, settings
 
 
 @respx.mock
 async def test_validate_plex_token_accepts_200():
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     assert await client_auth.validate_plex_token("good-token") is True
 
 
 @respx.mock
 async def test_validate_plex_token_rejects_401():
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
     assert await client_auth.validate_plex_token("bad-token") is False
 
 

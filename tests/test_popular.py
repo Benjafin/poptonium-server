@@ -17,7 +17,7 @@ from httpx import ASGITransport
 import app.db as _db
 import app.popular as popular
 import app.ratings as ratings
-from app.config import MDBLIST_BASE
+from app.config import MDBLIST_BASE, settings
 
 OFFICIAL_URL = "https://api.mdblist.com/lists/official/popular/items"
 
@@ -27,8 +27,8 @@ def _use_temp_db(tmp_path, monkeypatch):
 
 
 def _enable_key(monkeypatch):
-    monkeypatch.setattr(popular, "MDBLIST_API_KEY", "testkey")
-    monkeypatch.setattr(ratings, "MDBLIST_API_KEY", "testkey")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "testkey")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "testkey")
 
 
 def _app():
@@ -79,7 +79,7 @@ async def test_fetch_official_list_upstream_error_returns_empty(monkeypatch):
 async def test_refresh_popular_items_missing_key_noops(tmp_path, monkeypatch):
     _use_temp_db(tmp_path, monkeypatch)
     # MDBLIST_API_KEY is blank by default (conftest doesn't set it).
-    monkeypatch.setattr(popular, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
     await popular.refresh_popular_items()
     # Nothing stored.
     ranks = await popular.popular_tmdb_ranks(["movie", "show"])
@@ -310,7 +310,7 @@ async def test_popular_endpoint_limit_out_of_range_422(tmp_path, monkeypatch):
 async def test_trigger_refresh_schedules_task(tmp_path, monkeypatch):
     _use_temp_db(tmp_path, monkeypatch)
     # Key blank so the scheduled refresh_popular_items early-returns harmlessly.
-    monkeypatch.setattr(popular, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
 
     from app.auth import require_admin
     app = _app()

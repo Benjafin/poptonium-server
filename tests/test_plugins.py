@@ -19,7 +19,7 @@ from httpx import ASGITransport
 import app.db as _db
 from app import plugins
 from app.auth import require_admin
-from app.config import PLEX_URL
+from app.config import settings
 
 PLUGIN_URL = "http://plugin.test"
 
@@ -461,7 +461,7 @@ def _proxy_app():
 async def test_proxy_get_success(tmp_path, monkeypatch):
     await _seed_plugin(tmp_path, monkeypatch, pid="acme", enabled=True)
     # Auth gate (plex-user path).
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     upstream = respx.get(PLUGIN_URL + "/plugin/settings").mock(
         return_value=httpx.Response(200, json={"api_key": "secret"},
                                     headers={"content-type": "application/json"})
@@ -476,7 +476,7 @@ async def test_proxy_get_success(tmp_path, monkeypatch):
 @respx.mock
 async def test_proxy_post_forwards_body_and_query(tmp_path, monkeypatch):
     await _seed_plugin(tmp_path, monkeypatch, pid="acme", enabled=True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     upstream = respx.post(PLUGIN_URL + "/plugin/action").mock(
         return_value=httpx.Response(201, json={"ok": True})
     )
@@ -496,7 +496,7 @@ async def test_proxy_post_forwards_body_and_query(tmp_path, monkeypatch):
 @respx.mock
 async def test_proxy_upstream_error_502(tmp_path, monkeypatch):
     await _seed_plugin(tmp_path, monkeypatch, pid="acme", enabled=True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     respx.get(PLUGIN_URL + "/plugin/settings").mock(side_effect=httpx.ConnectError("down"))
     async with _client(_proxy_app()) as ac:
         resp = await ac.get("/plugins/acme/plugin/settings", headers={"X-Plex-Token": "tok"})
@@ -506,7 +506,7 @@ async def test_proxy_upstream_error_502(tmp_path, monkeypatch):
 @respx.mock
 async def test_proxy_passes_through_upstream_status(tmp_path, monkeypatch):
     await _seed_plugin(tmp_path, monkeypatch, pid="acme", enabled=True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     respx.get(PLUGIN_URL + "/plugin/missing").mock(
         return_value=httpx.Response(404, json={"error": "nope"})
     )
@@ -520,7 +520,7 @@ async def test_proxy_passes_through_upstream_status(tmp_path, monkeypatch):
 @respx.mock
 async def test_proxy_unknown_plugin_404(tmp_path, monkeypatch):
     _use_temp_db(tmp_path, monkeypatch)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     async with _client(_proxy_app()) as ac:
         resp = await ac.get("/plugins/ghost/plugin/settings", headers={"X-Plex-Token": "tok"})
     assert resp.status_code == 404
@@ -529,7 +529,7 @@ async def test_proxy_unknown_plugin_404(tmp_path, monkeypatch):
 @respx.mock
 async def test_proxy_disabled_plugin_503(tmp_path, monkeypatch):
     await _seed_plugin(tmp_path, monkeypatch, pid="acme", enabled=False)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     async with _client(_proxy_app()) as ac:
         resp = await ac.get("/plugins/acme/plugin/settings", headers={"X-Plex-Token": "tok"})
     assert resp.status_code == 503
@@ -538,7 +538,7 @@ async def test_proxy_disabled_plugin_503(tmp_path, monkeypatch):
 @respx.mock
 async def test_proxy_rejects_bad_plex_token(tmp_path, monkeypatch):
     await _seed_plugin(tmp_path, monkeypatch, pid="acme", enabled=True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
     async with _client(_proxy_app()) as ac:
         resp = await ac.get("/plugins/acme/plugin/settings", headers={"X-Plex-Token": "bad"})
     assert resp.status_code == 401
@@ -564,7 +564,7 @@ async def test_proxy_admin_override_bypasses_plex(tmp_path, monkeypatch):
 @respx.mock
 async def test_proxy_drops_hop_headers(tmp_path, monkeypatch):
     await _seed_plugin(tmp_path, monkeypatch, pid="acme", enabled=True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     upstream = respx.get(PLUGIN_URL + "/plugin/settings").mock(
         return_value=httpx.Response(
             200, json={"ok": 1},

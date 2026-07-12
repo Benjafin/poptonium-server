@@ -12,7 +12,7 @@ from httpx import ASGITransport
 import app.db as _db
 from app import server
 from app import scheduler as scheduler_mod
-from app.config import OVERSEERR_URL
+from app.config import settings
 
 
 class _FakeScheduler:
@@ -52,9 +52,9 @@ async def test_lifespan_runs_startup_then_shutdown(tmp_path, monkeypatch):
     # Drives the lifespan context manager directly (ASGITransport doesn't fire it).
     fake = _common_startup_stubs(monkeypatch, tmp_path)
     monkeypatch.setattr(server, "plex_configured", lambda: False)
-    monkeypatch.setattr(server, "MDBLIST_API_KEY", "")
-    monkeypatch.setattr(server, "OVERSEERR_URL", "")
-    monkeypatch.setattr(server, "OVERSEERR_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_API_KEY", "")
 
     async with server.lifespan(server.app):
         assert fake.started  # startup ran on enter
@@ -82,9 +82,9 @@ def _common_startup_stubs(monkeypatch, tmp_path):
 async def test_startup_plex_unconfigured_mdblist_off(tmp_path, monkeypatch):
     fake = _common_startup_stubs(monkeypatch, tmp_path)
     monkeypatch.setattr(server, "plex_configured", lambda: False)
-    monkeypatch.setattr(server, "MDBLIST_API_KEY", "")
-    monkeypatch.setattr(server, "OVERSEERR_URL", "")
-    monkeypatch.setattr(server, "OVERSEERR_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_API_KEY", "")
 
     await server.startup()
 
@@ -99,10 +99,10 @@ async def test_startup_plex_reachable_and_overseerr_connected(tmp_path, monkeypa
     async def _reachable():
         return True
     monkeypatch.setattr(server, "plex_reachable", _reachable)
-    monkeypatch.setattr(server, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
 
     with respx.mock:
-        respx.get(f"{OVERSEERR_URL}/api/v1/status").mock(
+        respx.get(f"{settings.OVERSEERR_URL}/api/v1/status").mock(
             return_value=httpx.Response(200, json={"version": "1.33.0"})
         )
         await server.startup()
@@ -117,9 +117,9 @@ async def test_startup_plex_unreachable_warns(tmp_path, monkeypatch):
     async def _unreachable():
         return False
     monkeypatch.setattr(server, "plex_reachable", _unreachable)
-    monkeypatch.setattr(server, "MDBLIST_API_KEY", "")
-    monkeypatch.setattr(server, "OVERSEERR_URL", "")
-    monkeypatch.setattr(server, "OVERSEERR_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_API_KEY", "")
 
     await server.startup()
     assert fake.started
@@ -132,10 +132,10 @@ async def test_startup_overseerr_returns_non_200(tmp_path, monkeypatch):
     async def _reachable():
         return True
     monkeypatch.setattr(server, "plex_reachable", _reachable)
-    monkeypatch.setattr(server, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
 
     with respx.mock:
-        respx.get(f"{OVERSEERR_URL}/api/v1/status").mock(return_value=httpx.Response(503, text="x"))
+        respx.get(f"{settings.OVERSEERR_URL}/api/v1/status").mock(return_value=httpx.Response(503, text="x"))
         await server.startup()
     assert fake.started
 
@@ -147,10 +147,10 @@ async def test_startup_overseerr_connection_error(tmp_path, monkeypatch):
     async def _reachable():
         return True
     monkeypatch.setattr(server, "plex_reachable", _reachable)
-    monkeypatch.setattr(server, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
 
     with respx.mock:
-        respx.get(f"{OVERSEERR_URL}/api/v1/status").mock(side_effect=httpx.ConnectError("down"))
+        respx.get(f"{settings.OVERSEERR_URL}/api/v1/status").mock(side_effect=httpx.ConnectError("down"))
         await server.startup()
     assert fake.started
 
@@ -162,9 +162,9 @@ async def test_startup_mdblist_on_triggers_background_work(tmp_path, monkeypatch
     async def _reachable():
         return True
     monkeypatch.setattr(server, "plex_reachable", _reachable)
-    monkeypatch.setattr(server, "MDBLIST_API_KEY", "a-key")
-    monkeypatch.setattr(server, "OVERSEERR_URL", "")
-    monkeypatch.setattr(server, "OVERSEERR_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "a-key")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_API_KEY", "")
 
     called = {"popular": False, "library": False}
 

@@ -25,7 +25,7 @@ from httpx import ASGITransport
 import app.admin as admin
 import app.db as _db
 from app.auth import require_admin
-from app.config import OVERSEERR_URL, PLEX_URL
+from app.config import mask_secret, settings
 
 
 # ---------------------------------------------------------------------------
@@ -57,8 +57,8 @@ def _client(app):
 
 
 def _mock_plex_reachable(ok: bool):
-    """The reachability probe hits {PLEX_URL}/identity."""
-    respx.get(f"{PLEX_URL}/identity").mock(
+    """The reachability probe hits the authenticated server root {settings.PLEX_URL}/."""
+    respx.get(f"{settings.PLEX_URL}/").mock(
         return_value=httpx.Response(200 if ok else 401, json={})
     )
 
@@ -73,17 +73,17 @@ def _reset_plex_reachable_cache():
 # ===========================================================================
 
 def test_mask_empty():
-    assert admin._mask("") == ""
-    assert admin._mask(None) == ""
+    assert mask_secret("") == ""
+    assert mask_secret(None) == ""
 
 
 def test_mask_short_value_fully_masked():
-    assert admin._mask("abcd") == "••••"
-    assert admin._mask("12345678") == "•" * 8
+    assert mask_secret("abcd") == "••••"
+    assert mask_secret("12345678") == "•" * 8
 
 
 def test_mask_long_value_shows_ends():
-    assert admin._mask("abcdefghij") == "abcd…ghij"
+    assert mask_secret("abcdefghij") == "abcd…ghij"
 
 
 # ===========================================================================
@@ -112,14 +112,14 @@ async def test_probe_plex_unreachable(monkeypatch):
 
 
 async def test_probe_overseerr_not_configured(monkeypatch):
-    monkeypatch.setattr(admin, "OVERSEERR_URL", "")
-    monkeypatch.setattr(admin, "OVERSEERR_API_KEY", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_API_KEY", "")
     assert await admin._probe_overseerr() is None
 
 
 @respx.mock
 async def test_probe_overseerr_ok():
-    respx.get(f"{OVERSEERR_URL}/api/v1/status").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/settings/main").mock(
         return_value=httpx.Response(200, json={"version": "1"})
     )
     assert await admin._probe_overseerr() is True
@@ -127,7 +127,7 @@ async def test_probe_overseerr_ok():
 
 @respx.mock
 async def test_probe_overseerr_bad_status():
-    respx.get(f"{OVERSEERR_URL}/api/v1/status").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/settings/main").mock(
         return_value=httpx.Response(500)
     )
     assert await admin._probe_overseerr() is False
@@ -135,7 +135,7 @@ async def test_probe_overseerr_bad_status():
 
 @respx.mock
 async def test_probe_overseerr_exception():
-    respx.get(f"{OVERSEERR_URL}/api/v1/status").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/settings/main").mock(
         side_effect=httpx.ConnectError("boom")
     )
     assert await admin._probe_overseerr() is False
@@ -150,9 +150,9 @@ async def test_status_happy_path_plex_and_overseerr_reachable(tmp_path, monkeypa
     _isolate_db(tmp_path, monkeypatch)
     _reset_plex_reachable_cache()
     monkeypatch.setattr(admin, "plex_configured", lambda: True)
-    monkeypatch.setattr(admin, "MDBLIST_API_KEY", "secretkey123456")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "secretkey123456")
     _mock_plex_reachable(True)
-    respx.get(f"{OVERSEERR_URL}/api/v1/status").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/settings/main").mock(
         return_value=httpx.Response(200, json={})
     )
     # No scheduler running (module global stays None) and no plugins in the DB.
@@ -176,7 +176,7 @@ async def test_status_happy_path_plex_and_overseerr_reachable(tmp_path, monkeypa
     assert body["ratings"]["sync"] == {"enabled": True, "hour": 3}
     assert body["jobs"] == []
     assert body["plugins"] == []
-    assert body["plex"] == {"configured": True, "healthy": True, "url": PLEX_URL}
+    assert body["plex"] == {"configured": True, "healthy": True, "url": settings.PLEX_URL}
     assert body["overseerr"]["configured"] is True
     assert body["overseerr"]["healthy"] is True
     # Config secrets are masked.
@@ -190,7 +190,7 @@ async def test_status_plex_unreachable_overseerr_down(tmp_path, monkeypatch):
     _reset_plex_reachable_cache()
     monkeypatch.setattr(admin, "plex_configured", lambda: True)
     _mock_plex_reachable(False)
-    respx.get(f"{OVERSEERR_URL}/api/v1/status").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/settings/main").mock(
         side_effect=httpx.ConnectError("down")
     )
 
@@ -206,15 +206,15 @@ async def test_status_plex_unreachable_overseerr_down(tmp_path, monkeypatch):
 async def test_status_plex_not_configured(tmp_path, monkeypatch):
     _isolate_db(tmp_path, monkeypatch)
     monkeypatch.setattr(admin, "plex_configured", lambda: False)
-    monkeypatch.setattr(admin, "OVERSEERR_URL", "")
-    monkeypatch.setattr(admin, "OVERSEERR_API_KEY", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_API_KEY", "")
 
     async with _client(_api_app()) as ac:
         resp = await ac.get("/admin/status")
 
     body = resp.json()
     # None = not configured (no probe attempted).
-    assert body["plex"] == {"configured": False, "healthy": None, "url": PLEX_URL}
+    assert body["plex"] == {"configured": False, "healthy": None, "url": settings.PLEX_URL}
     assert body["overseerr"]["configured"] is False
     assert body["overseerr"]["healthy"] is None
     assert body["ratings"]["configured"] is False  # MDBLIST default env is empty
@@ -226,7 +226,7 @@ async def test_status_reports_cache_counts_and_last_times(tmp_path, monkeypatch)
     _reset_plex_reachable_cache()
     monkeypatch.setattr(admin, "plex_configured", lambda: True)
     _mock_plex_reachable(True)
-    respx.get(f"{OVERSEERR_URL}/api/v1/status").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/settings/main").mock(
         return_value=httpx.Response(200, json={})
     )
 
@@ -269,7 +269,7 @@ async def test_status_includes_scheduler_jobs(tmp_path, monkeypatch):
     _reset_plex_reachable_cache()
     monkeypatch.setattr(admin, "plex_configured", lambda: True)
     _mock_plex_reachable(True)
-    respx.get(f"{OVERSEERR_URL}/api/v1/status").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/settings/main").mock(
         return_value=httpx.Response(200, json={})
     )
 
@@ -307,7 +307,7 @@ async def test_status_includes_plugins_with_live_status(tmp_path, monkeypatch):
     _reset_plex_reachable_cache()
     monkeypatch.setattr(admin, "plex_configured", lambda: True)
     _mock_plex_reachable(True)
-    respx.get(f"{OVERSEERR_URL}/api/v1/status").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/settings/main").mock(
         return_value=httpx.Response(200, json={})
     )
 
@@ -349,7 +349,7 @@ async def test_status_includes_plugins_with_live_status(tmp_path, monkeypatch):
 @respx.mock
 async def test_plex_sections_returns_mapped_dirs(monkeypatch):
     monkeypatch.setattr(admin, "plex_configured", lambda: True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(
         return_value=httpx.Response(200, json={
             "MediaContainer": {"Directory": [
                 {"key": "1", "title": "Movies", "type": "movie"},
@@ -372,7 +372,7 @@ async def test_plex_sections_returns_mapped_dirs(monkeypatch):
 async def test_plex_sections_empty_when_plex_returns_nothing(monkeypatch):
     # plex_get returns None (non-200) → endpoint returns empty list.
     monkeypatch.setattr(admin, "plex_configured", lambda: True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(
         return_value=httpx.Response(500)
     )
 
@@ -389,7 +389,7 @@ async def test_plex_sections_empty_when_plex_returns_nothing(monkeypatch):
 @respx.mock
 async def test_plex_collections_returns_mapped(monkeypatch):
     monkeypatch.setattr(admin, "plex_configured", lambda: True)
-    respx.get(f"{PLEX_URL}/library/sections/1/collections").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/collections").mock(
         return_value=httpx.Response(200, json={
             "MediaContainer": {"Metadata": [
                 {"ratingKey": 55, "title": "Marvel", "childCount": 30},
@@ -408,7 +408,7 @@ async def test_plex_collections_returns_mapped(monkeypatch):
 @respx.mock
 async def test_plex_collections_empty(monkeypatch):
     monkeypatch.setattr(admin, "plex_configured", lambda: True)
-    respx.get(f"{PLEX_URL}/library/sections/9/collections").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/9/collections").mock(
         return_value=httpx.Response(404)
     )
 
@@ -433,7 +433,7 @@ async def test_plex_collections_requires_section_param():
 async def test_plex_tags_tallies_and_sorts(monkeypatch):
     monkeypatch.setattr(admin, "plex_configured", lambda: True)
     # Full-library scan: two items carry Genre "Action", one "Drama".
-    respx.get(f"{PLEX_URL}/library/sections/1/all").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/all").mock(
         return_value=httpx.Response(200, json={
             "MediaContainer": {"Metadata": [
                 {"Genre": [{"tag": "Action"}, {"tag": "Drama"}]},
@@ -443,7 +443,7 @@ async def test_plex_tags_tallies_and_sorts(monkeypatch):
         })
     )
     # Per-dimension directory listings.
-    respx.get(f"{PLEX_URL}/library/sections/1/genre").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/genre").mock(
         return_value=httpx.Response(200, json={
             "MediaContainer": {"Directory": [
                 {"key": "10", "title": "Drama"},
@@ -451,15 +451,15 @@ async def test_plex_tags_tallies_and_sorts(monkeypatch):
             ]}
         })
     )
-    respx.get(f"{PLEX_URL}/library/sections/1/director").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/director").mock(
         return_value=httpx.Response(200, json={
             "MediaContainer": {"Directory": [{"key": "20", "title": "Nolan"}]}
         })
     )
-    respx.get(f"{PLEX_URL}/library/sections/1/actor").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/actor").mock(
         return_value=httpx.Response(200, json={"MediaContainer": {"Directory": []}})
     )
-    respx.get(f"{PLEX_URL}/library/sections/1/country").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/country").mock(
         return_value=httpx.Response(200, json={"MediaContainer": {"Directory": []}})
     )
 
@@ -481,11 +481,11 @@ async def test_plex_tags_tallies_and_sorts(monkeypatch):
 async def test_plex_tags_empty_library(monkeypatch):
     monkeypatch.setattr(admin, "plex_configured", lambda: True)
     # Full scan returns nothing; each directory listing also empty.
-    respx.get(f"{PLEX_URL}/library/sections/2/all").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/2/all").mock(
         return_value=httpx.Response(500)
     )
     for dirname in ("genre", "director", "actor", "country"):
-        respx.get(f"{PLEX_URL}/library/sections/2/{dirname}").mock(
+        respx.get(f"{settings.PLEX_URL}/library/sections/2/{dirname}").mock(
             return_value=httpx.Response(500)
         )
 

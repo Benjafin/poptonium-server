@@ -17,8 +17,22 @@ os.environ.setdefault("OVERSEERR_URL", "http://overseerr.test")
 os.environ.setdefault("OVERSEERR_API_KEY", "test-api-key")
 # A throwaway on-disk SQLite file so db tests never touch /data.
 os.environ.setdefault("DB_PATH", os.path.join(tempfile.gettempdir(), "poptonium-test.db"))
+# Live config now lives in a JSON file (seeded from the env above on first load);
+# point it at a throwaway path so tests never touch a real /data/config.json.
+os.environ.setdefault("CONFIG_PATH", os.path.join(tempfile.gettempdir(), "poptonium-test-config.json"))
 
 import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _reset_settings():
+    """Reset the live config singleton to the env-seeded baseline before each test,
+    in memory (no persist), so a value a test sets via ``monkeypatch.setitem`` — or
+    an endpoint that persists — can't leak into the next test."""
+    from app.config import CONFIG_KEYS, settings
+
+    settings._values = {k: os.environ.get(k, "") for k in CONFIG_KEYS}
+    yield
 
 
 @pytest.fixture(autouse=True)

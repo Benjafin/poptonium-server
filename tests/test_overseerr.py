@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 
 from app import overseerr
-from app.config import OVERSEERR_URL, PLEX_TV_USER_URL, PLEX_URL
+from app.config import PLEX_TV_USER_URL, settings
 
 
 def _mock_identity(plex_id, email="user@example.com"):
@@ -22,7 +22,7 @@ def _mock_identity(plex_id, email="user@example.com"):
 
 
 def _mock_user_list(users):
-    respx.get(f"{OVERSEERR_URL}/api/v1/user").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/user").mock(
         return_value=httpx.Response(200, json={"pageInfo": {"results": len(users)}, "results": users})
     )
 
@@ -48,7 +48,7 @@ async def test_matches_existing_user_by_email_when_plexid_differs():
 async def test_imports_user_when_absent_then_returns_new_id():
     _mock_identity(4242, "new@example.com")
     _mock_user_list([])  # caller not in Overseerr yet
-    import_route = respx.post(f"{OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
+    import_route = respx.post(f"{settings.OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
         return_value=httpx.Response(201, json=[{"id": 21, "plexId": 4242, "email": "new@example.com"}])
     )
     assert await overseerr._overseerr_user_id_for("caller-tok") == 21
@@ -62,7 +62,7 @@ async def test_returns_none_when_not_matchable_and_import_empty():
     # User isn't shared to the Plex server -> import creates nobody.
     _mock_identity(4242, "ghost@example.com")
     _mock_user_list([])
-    respx.post(f"{OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
+    respx.post(f"{settings.OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
         return_value=httpx.Response(201, json=[])
     )
     assert await overseerr._overseerr_user_id_for("caller-tok") is None
@@ -81,7 +81,7 @@ async def test_attributes_server_scoped_token_via_shared_map():
     # plex.tv rejects (401). Attribution must still resolve the user via the
     # owner's shared-users map and match them to their Overseerr account.
     respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
-    respx.get(f"{PLEX_URL}/identity").mock(
+    respx.get(f"{settings.PLEX_URL}/identity").mock(
         return_value=httpx.Response(200, json={"MediaContainer": {"machineIdentifier": "m"}})
     )
     respx.get("https://plex.tv/api/servers/m/shared_servers").mock(
@@ -104,10 +104,10 @@ def _app():
 @respx.mock
 async def test_request_endpoint_attaches_userid():
     # Auth gate: the caller's token is accepted by Plex.
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     _mock_identity(4242, "ada@example.com")
     _mock_user_list([{"id": 7, "plexId": 4242, "email": "ada@example.com"}])
-    request_route = respx.post(f"{OVERSEERR_URL}/api/v1/request").mock(
+    request_route = respx.post(f"{settings.OVERSEERR_URL}/api/v1/request").mock(
         return_value=httpx.Response(201, json={"id": 1})
     )
 
@@ -130,7 +130,7 @@ async def test_request_endpoint_attaches_userid():
 @respx.mock
 async def test_request_endpoint_rejects_bad_token():
     # Plex rejects the token -> the endpoint 401s and never calls Overseerr.
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
 
     transport = ASGITransport(app=_app())
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -149,13 +149,13 @@ async def test_request_endpoint_rejects_bad_token():
 async def test_request_endpoint_falls_back_to_owner_when_unmatched():
     # Caller authenticates but can't be matched/imported: request still succeeds,
     # just with no userId (Overseerr attributes it to the API-key owner).
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     _mock_identity(4242, "ghost@example.com")
     _mock_user_list([])
-    respx.post(f"{OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
+    respx.post(f"{settings.OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
         return_value=httpx.Response(201, json=[])
     )
-    request_route = respx.post(f"{OVERSEERR_URL}/api/v1/request").mock(
+    request_route = respx.post(f"{settings.OVERSEERR_URL}/api/v1/request").mock(
         return_value=httpx.Response(201, json={"id": 1})
     )
 

@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 
 from app import capabilities
+from app.config import settings
 
 
 def _app():
@@ -58,12 +59,12 @@ async def test_returns_core_document(monkeypatch):
 # ---- integration toggles ----------------------------------------------------
 
 async def test_ratings_true_when_mdblist_key_set(monkeypatch):
-    monkeypatch.setattr(capabilities, "MDBLIST_API_KEY", "key")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "key")
     assert (await _get(monkeypatch)).json()["ratings"] is True
 
 
 async def test_ratings_false_without_mdblist_key(monkeypatch):
-    monkeypatch.setattr(capabilities, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
     assert (await _get(monkeypatch)).json()["ratings"] is False
 
 
@@ -82,14 +83,14 @@ async def test_plex_flags_false_when_unconfigured(monkeypatch):
 
 
 async def test_overseerr_configured_requires_both(monkeypatch):
-    monkeypatch.setattr(capabilities, "OVERSEERR_URL", "http://o")
-    monkeypatch.setattr(capabilities, "OVERSEERR_API_KEY", "k")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "http://o")
+    monkeypatch.setitem(settings._values, "OVERSEERR_API_KEY", "k")
     assert (await _get(monkeypatch)).json()["overseerr_configured"] is True
 
 
 async def test_overseerr_unconfigured_when_key_missing(monkeypatch):
-    monkeypatch.setattr(capabilities, "OVERSEERR_URL", "http://o")
-    monkeypatch.setattr(capabilities, "OVERSEERR_API_KEY", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "http://o")
+    monkeypatch.setitem(settings._values, "OVERSEERR_API_KEY", "")
     assert (await _get(monkeypatch)).json()["overseerr_configured"] is False
 
 

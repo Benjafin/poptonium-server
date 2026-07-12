@@ -1,5 +1,14 @@
-"""Environment configuration, service-wide constants, and logging setup."""
+"""Environment configuration, service-wide constants, and logging setup.
 
+Integration credentials (Plex, MDbList, Overseerr, OpenSubtitles) are NOT plain
+env constants anymore: they live in the ``settings`` singleton at the bottom of
+this module, backed by a JSON file on the /data bind (``CONFIG_PATH``). The
+environment only *seeds* that file on first boot; thereafter the file is the sole
+source of truth, so the values are editable in the admin UI and apply live
+(consumers read ``settings.PLEX_URL`` etc., never a captured constant).
+"""
+
+import json
 import logging
 import os
 
@@ -7,19 +16,13 @@ import os
 # Overridable via DB_PATH only so tests can point at a temp file; prod leaves it.
 DB_PATH = os.environ.get("DB_PATH", "/data/poptonium.db")
 
-# Optional. With no key, ratings and the Discover popular feed are disabled; the
-# rest of the service keeps working.
-MDBLIST_API_KEY = os.environ.get("MDBLIST_API_KEY", "")
+# The live integration config file. Defaults next to the DB on the /data bind.
+CONFIG_PATH = os.environ.get("CONFIG_PATH", os.path.join(os.path.dirname(DB_PATH) or ".", "config.json"))
+
 MDBLIST_BASE = "https://api.mdblist.com"
 RATINGS_MAX_AGE = 14 * 86400  # consider a cached rating stale after 14 days
 # Nightly library-ratings sync is configured in the dashboard (meta key
 # "ratings_sync"), defaulting to enabled at 03:00. No env var.
-
-OVERSEERR_URL = os.environ.get("OVERSEERR_URL", "")
-OVERSEERR_API_KEY = os.environ.get("OVERSEERR_API_KEY", "")
-
-PLEX_URL = os.environ.get("PLEX_URL", "")
-PLEX_TOKEN = os.environ.get("PLEX_TOKEN", "")
 
 # plex.tv account endpoint — resolves which account owns a given Plex token.
 PLEX_TV_USER_URL = "https://plex.tv/api/v2/user"
@@ -27,9 +30,6 @@ PLEX_TV_USER_URL = "https://plex.tv/api/v2/user"
 # OpenSubtitles (api.opensubtitles.com). One app-level API key + one shared account
 # (its daily download quota is shared by everyone). API key is created under the
 # account's "API Consumers" page. The User-Agent identifying the app is fixed.
-OPENSUBTITLES_API_KEY = os.environ.get("OPENSUBTITLES_API_KEY", "")
-OPENSUBTITLES_USERNAME = os.environ.get("OPENSUBTITLES_USERNAME", "")
-OPENSUBTITLES_PASSWORD = os.environ.get("OPENSUBTITLES_PASSWORD", "")
 OPENSUBTITLES_USER_AGENT = "Poptonium"
 OPENSUBTITLES_API_BASE = "https://api.opensubtitles.com/api/v1"
 
@@ -110,14 +110,20 @@ def degrade_config(config: dict, client_schema: str) -> dict:
 SUPPORTED_SOURCES = ["mdblist", "imdb", "tomatoes", "popcorn", "tmdb", "metacritic"]
 
 DEFAULT_RATING_CONFIG = {
-    "display_sources": ["mdblist", "imdb", "tomatoes", "popcorn", "tmdb", "metacritic"],
     # Ordered badge GROUPS. Each group has a visibility:
     #   "always":  its present (non-empty/non-zero) sources are always shown.
     #   "fallback": only shown when EVERY "always" source is missing; fallback
     #                groups are tried in order until one has a present source.
     # `display_sources` is kept as the flattened union for older app clients.
+    # Default mirrors a curated real-world setup: Rotten Tomatoes critic + audience
+    # always, then Metacritic -> IMDb -> TMDB as fallbacks. The mdblist aggregate is
+    # used for ranking/formula but not shown as its own badge.
+    "display_sources": ["tomatoes", "popcorn", "metacritic", "imdb", "tmdb"],
     "display_groups": [
-        {"visibility": "always", "sources": ["mdblist", "imdb", "tomatoes", "popcorn", "tmdb", "metacritic"]},
+        {"visibility": "always", "sources": ["tomatoes", "popcorn"]},
+        {"visibility": "fallback", "sources": ["metacritic"]},
+        {"visibility": "fallback", "sources": ["imdb"]},
+        {"visibility": "fallback", "sources": ["tmdb"]},
     ],
     "formula": {
         "preset": "mdblist",  # or "custom"
@@ -136,3 +142,104 @@ PLEX_TYPE = {"movie": 1, "show": 2}
 
 log = logging.getLogger("poptonium")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+
+# ---------- Live integration config (settings singleton) ----------
+
+# The ordered set of persisted integration keys. URLs/usernames are shown in the
+# clear in the admin UI; the rest are masked (SECRET_KEYS).
+CONFIG_KEYS = (
+    "PLEX_URL", "PLEX_TOKEN",
+    "MDBLIST_API_KEY",
+    "OVERSEERR_URL", "OVERSEERR_API_KEY",
+    "OPENSUBTITLES_API_KEY", "OPENSUBTITLES_USERNAME", "OPENSUBTITLES_PASSWORD",
+)
+SECRET_KEYS = frozenset({
+    "PLEX_TOKEN", "MDBLIST_API_KEY", "OVERSEERR_API_KEY",
+    "OPENSUBTITLES_API_KEY", "OPENSUBTITLES_PASSWORD",
+})
+
+
+def mask_secret(val: str) -> str:
+    """Short, non-reversible preview of a secret for display in the admin UI."""
+    if not val:
+        return ""
+    if len(val) <= 8:
+        return "•" * len(val)
+    return f"{val[:4]}…{val[-4:]}"
+
+
+class Settings:
+    """Live integration credentials, persisted to ``CONFIG_PATH`` on the /data bind.
+
+    File-only precedence: on first boot (no file) the values are seeded once from
+    the environment so an env-configured instance keeps working, then the file is
+    the sole source of truth. Consumers read attributes (``settings.PLEX_URL``), so
+    an in-app edit via ``update`` propagates everywhere with no restart.
+    """
+
+    def __init__(self, path: str = None):
+        self._path = path or CONFIG_PATH
+        self._values = {k: "" for k in CONFIG_KEYS}
+
+    def load(self) -> "Settings":
+        data = None
+        if os.path.exists(self._path):
+            try:
+                with open(self._path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                log.warning("Config file %s unreadable; reseeding from environment", self._path)
+        if data is None:
+            # First boot (or a corrupt file): seed once from the environment.
+            data = {k: os.environ.get(k, "") for k in CONFIG_KEYS}
+            self._values = {k: str(data.get(k) or "") for k in CONFIG_KEYS}
+            self._persist()
+        else:
+            self._values = {k: str(data.get(k) or "") for k in CONFIG_KEYS}
+        return self
+
+    def _persist(self):
+        try:
+            d = os.path.dirname(self._path)
+            if d:
+                os.makedirs(d, exist_ok=True)
+            tmp = f"{self._path}.tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(self._values, f, indent=2)
+            os.replace(tmp, self._path)
+        except Exception as e:
+            log.error("Failed to persist config to %s: %s", self._path, e)
+
+    def update(self, patch: dict) -> dict:
+        """Merge known keys from `patch` (ignoring unknown ones), persist, and return
+        the new value map. A key set to None/"" clears it."""
+        for k, v in (patch or {}).items():
+            if k in self._values:
+                self._values[k] = "" if v is None else str(v)
+        self._persist()
+        return dict(self._values)
+
+    def as_masked(self) -> dict:
+        """Config for the admin UI: URLs/usernames in the clear; secrets masked and
+        accompanied by a ``<KEY>_set`` boolean (mirrors the plugin settings shape)."""
+        out = {}
+        for k in CONFIG_KEYS:
+            v = self._values.get(k, "")
+            if k in SECRET_KEYS:
+                out[k] = mask_secret(v)
+                out[f"{k}_set"] = bool(v)
+            else:
+                out[k] = v
+        return out
+
+    def __getattr__(self, name):
+        # Only reached when `name` isn't a real attribute/method — i.e. the config keys.
+        values = self.__dict__.get("_values")
+        if values is not None and name in values:
+            return values[name]
+        raise AttributeError(name)
+
+
+settings = Settings()
+settings.load()

@@ -19,7 +19,7 @@ from typing import Optional
 
 from fastapi import HTTPException, Request
 
-from .config import PLEX_TOKEN, PLEX_TV_USER_URL, PLEX_URL, log
+from .config import PLEX_TV_USER_URL, log, settings
 from .http_client import http_client
 from .plex import plex_configured
 
@@ -61,7 +61,7 @@ async def validate_plex_token(token: str) -> bool:
         # /library/sections returns 200 only for a token with library access,
         # 401 otherwise. Cheap and works for owner + shared users alike.
         resp = await http_client().get(
-            f"{PLEX_URL}/library/sections",
+            f"{settings.PLEX_URL}/library/sections",
             headers={"X-Plex-Token": token, "Accept": "application/json"},
             timeout=8,
         )
@@ -167,22 +167,22 @@ async def _plex_shared_identity_map() -> dict[str, dict]:
     by_digest: dict[str, dict] = {}
     try:
         idr = await http_client().get(
-            f"{PLEX_URL}/identity",
-            headers={"X-Plex-Token": PLEX_TOKEN, "Accept": "application/json"},
+            f"{settings.PLEX_URL}/identity",
+            headers={"X-Plex-Token": settings.PLEX_TOKEN, "Accept": "application/json"},
             timeout=8,
         )
         machine_id = idr.json().get("MediaContainer", {}).get("machineIdentifier")
 
         # The owner's own token is a real account token — resolve it directly so
         # the owner's own requests attribute correctly too.
-        owner = await plex_user_identity(PLEX_TOKEN)
+        owner = await plex_user_identity(settings.PLEX_TOKEN)
         if owner and owner.get("plex_id") is not None:
-            by_digest[_digest(PLEX_TOKEN)] = owner
+            by_digest[_digest(settings.PLEX_TOKEN)] = owner
 
         if machine_id:
             resp = await http_client().get(
                 f"https://plex.tv/api/servers/{machine_id}/shared_servers",
-                headers={"X-Plex-Token": PLEX_TOKEN},
+                headers={"X-Plex-Token": settings.PLEX_TOKEN},
                 timeout=15,
             )
             if resp.status_code == 200:
@@ -234,7 +234,7 @@ async def plex_user_can_access(token: str, rating_key: str) -> bool:
         return False
     try:
         resp = await http_client().get(
-            f"{PLEX_URL}/library/metadata/{rk}",
+            f"{settings.PLEX_URL}/library/metadata/{rk}",
             headers={"X-Plex-Token": token, "Accept": "application/json"},
             timeout=8,
         )

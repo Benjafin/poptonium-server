@@ -10,11 +10,9 @@ from pydantic import BaseModel
 from .client_auth import plex_user_can_access, require_plex_user, require_plex_user_token
 from .config import (
     OPENSUBTITLES_API_BASE,
-    OPENSUBTITLES_API_KEY,
-    OPENSUBTITLES_PASSWORD,
     OPENSUBTITLES_USER_AGENT,
-    OPENSUBTITLES_USERNAME,
     log,
+    settings,
 )
 from .db import meta_get, meta_set
 from .http_client import http_client
@@ -24,12 +22,12 @@ router = APIRouter()
 
 
 def opensubtitles_configured() -> bool:
-    return bool(OPENSUBTITLES_API_KEY and OPENSUBTITLES_USERNAME and OPENSUBTITLES_PASSWORD)
+    return bool(settings.OPENSUBTITLES_API_KEY and settings.OPENSUBTITLES_USERNAME and settings.OPENSUBTITLES_PASSWORD)
 
 
 def _os_headers(token: Optional[str] = None) -> dict:
     h = {
-        "Api-Key": OPENSUBTITLES_API_KEY,
+        "Api-Key": settings.OPENSUBTITLES_API_KEY,
         "User-Agent": OPENSUBTITLES_USER_AGENT,
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -64,7 +62,7 @@ async def _os_token() -> Optional[tuple[str, str]]:
         resp = await http_client().post(
             f"{OPENSUBTITLES_API_BASE}/login",
             headers=_os_headers(),
-            json={"username": OPENSUBTITLES_USERNAME, "password": OPENSUBTITLES_PASSWORD},
+            json={"username": settings.OPENSUBTITLES_USERNAME, "password": settings.OPENSUBTITLES_PASSWORD},
             timeout=20,
             follow_redirects=True,
         )

@@ -20,11 +20,11 @@ from . import scheduler as scheduler_mod
 from .auth import require_admin
 from .config import (
     DEFAULT_RATING_CONFIG,
-    MDBLIST_API_KEY,
     MDBLIST_BASE,
     PLEX_TYPE,
     SUPPORTED_SOURCES,
     log,
+    settings,
 )
 from .db import get_db, meta_get, meta_set
 from .plex import plex_configured, plex_get, tmdb_from_metadata
@@ -55,7 +55,7 @@ def _parse_sources(item: dict) -> dict:
 async def mdblist_bulk(media_type: str, tmdb_ids: list[int]) -> dict[int, dict]:
     """Bulk-fetch mdblist data for TMDB ids: 1 request per ≤200 ids.
     Returns {tmdb_id: raw_item}. media_type is 'movie' or 'show'."""
-    if not MDBLIST_API_KEY or not tmdb_ids:
+    if not settings.MDBLIST_API_KEY or not tmdb_ids:
         return {}
     path = "movie" if media_type == "movie" else "show"
     ids = list(dict.fromkeys(int(i) for i in tmdb_ids if i))
@@ -69,7 +69,7 @@ async def mdblist_bulk(media_type: str, tmdb_ids: list[int]) -> dict[int, dict]:
                     try:
                         resp = await client.post(
                             f"{MDBLIST_BASE}/tmdb/{path}",
-                            params={"apikey": MDBLIST_API_KEY},
+                            params={"apikey": settings.MDBLIST_API_KEY},
                             json={"ids": chunk},
                         )
                     except httpx.HTTPError as e:
@@ -338,7 +338,7 @@ async def get_ratings_sync_config() -> dict:
 
 async def refresh_library_ratings():
     """Bulk-cache mdblist ratings for every movie/show in the Plex library."""
-    if not MDBLIST_API_KEY:
+    if not settings.MDBLIST_API_KEY:
         log.warning("MDBLIST_API_KEY not set, skipping library ratings sync")
         return
     if not plex_configured():
@@ -374,7 +374,7 @@ def schedule_library_sync(sync_cfg: dict):
         scheduler.remove_job("library_ratings")
     except Exception:
         pass
-    if sync_cfg.get("enabled") and MDBLIST_API_KEY:
+    if sync_cfg.get("enabled") and settings.MDBLIST_API_KEY:
         scheduler.add_job(refresh_library_ratings, "cron", hour=int(sync_cfg.get("hour", 3)),
                           minute=15, id="library_ratings", name="Library ratings sync")
         log.info("Library ratings sync scheduled at %02d:15 daily", int(sync_cfg.get("hour", 3)))

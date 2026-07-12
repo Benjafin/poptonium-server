@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 
 from app import overseerr
-from app.config import OVERSEERR_URL, PLEX_TV_USER_URL, PLEX_URL
+from app.config import PLEX_TV_USER_URL, settings
 
 
 # ---- _match_user branches ---------------------------------------------------
@@ -28,7 +28,7 @@ def test_match_user_plex_id_unmatched_falls_through_to_none():
 @respx.mock
 async def test_import_skips_null_and_non_int_pids():
     overseerr._user_cache.update(expiry=0.0, by_plex_id={}, by_email={})
-    respx.post(f"{OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
+    respx.post(f"{settings.OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
         return_value=httpx.Response(201, json=[
             {"id": 1, "plexId": None},     # pid None → continue
             {"id": 2, "plexId": "xyz"},    # int("xyz") raises → pass
@@ -54,18 +54,18 @@ async def _post_request(body):
 
 @respx.mock
 async def test_request_not_configured_returns_503(monkeypatch):
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
-    monkeypatch.setattr(overseerr, "OVERSEERR_URL", "")
-    monkeypatch.setattr(overseerr, "OVERSEERR_API_KEY", "")
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_API_KEY", "")
     resp = await _post_request({"tmdb_id": 1, "media_type": "movie"})
     assert resp.status_code == 503
 
 
 @respx.mock
 async def test_request_tv_sends_seasons_and_owner_fallback():
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))  # identity → None → owner fallback
-    route = respx.post(f"{OVERSEERR_URL}/api/v1/request").mock(
+    route = respx.post(f"{settings.OVERSEERR_URL}/api/v1/request").mock(
         return_value=httpx.Response(201, json={"id": 1})
     )
     resp = await _post_request({"tmdb_id": 55, "media_type": "show", "seasons": [1, 2]})
@@ -79,9 +79,9 @@ async def test_request_tv_sends_seasons_and_owner_fallback():
 
 @respx.mock
 async def test_request_upstream_failure_propagates_status():
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
-    respx.post(f"{OVERSEERR_URL}/api/v1/request").mock(
+    respx.post(f"{settings.OVERSEERR_URL}/api/v1/request").mock(
         return_value=httpx.Response(500, text="boom")
     )
     resp = await _post_request({"tmdb_id": 55, "media_type": "movie"})
@@ -93,13 +93,13 @@ async def test_request_upstream_failure_propagates_status():
 @respx.mock
 async def test_requested_swallows_exception_returns_empty():
     # The media list call raising is caught → empty lists (not a 500).
-    respx.get(f"{OVERSEERR_URL}/api/v1/media").mock(side_effect=httpx.ConnectError("down"))
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/media").mock(side_effect=httpx.ConnectError("down"))
     app = FastAPI()
     app.include_router(overseerr.router)
     transport = ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
         # requires a valid plex user
-        respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+        respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
         resp = await ac.get("/overseerr/requested", headers={"X-Plex-Token": "tok"})
     assert resp.status_code == 200
     assert resp.json() == {"movie": [], "tv": []}
@@ -107,8 +107,8 @@ async def test_requested_swallows_exception_returns_empty():
 
 @respx.mock
 async def test_search_exception_returns_500():
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
-    respx.get(f"{OVERSEERR_URL}/api/v1/search").mock(side_effect=httpx.ConnectError("down"))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/search").mock(side_effect=httpx.ConnectError("down"))
     app = FastAPI()
     app.include_router(overseerr.router)
     transport = ASGITransport(app=app)

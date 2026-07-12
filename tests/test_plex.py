@@ -9,7 +9,7 @@ import httpx
 import respx
 
 from app import plex
-from app.config import PLEX_URL
+from app.config import settings
 
 
 # ---- plex_configured --------------------------------------------------------
@@ -19,12 +19,12 @@ def test_plex_configured_true():
 
 
 def test_plex_configured_false_without_url(monkeypatch):
-    monkeypatch.setattr(plex, "PLEX_URL", "")
+    monkeypatch.setitem(settings._values, "PLEX_URL", "")
     assert plex.plex_configured() is False
 
 
 def test_plex_configured_false_without_token(monkeypatch):
-    monkeypatch.setattr(plex, "PLEX_TOKEN", "")
+    monkeypatch.setitem(settings._values, "PLEX_TOKEN", "")
     assert plex.plex_configured() is False
 
 
@@ -36,14 +36,14 @@ def _clear_reachable():
 
 async def test_plex_reachable_false_when_unconfigured(monkeypatch):
     _clear_reachable()
-    monkeypatch.setattr(plex, "PLEX_URL", "")
+    monkeypatch.setitem(settings._values, "PLEX_URL", "")
     assert await plex.plex_reachable() is False
 
 
 @respx.mock
 async def test_plex_reachable_true_on_200():
     _clear_reachable()
-    route = respx.get(f"{PLEX_URL}/identity").mock(return_value=httpx.Response(200))
+    route = respx.get(f"{settings.PLEX_URL}/").mock(return_value=httpx.Response(200))
     assert await plex.plex_reachable() is True
     assert route.called
 
@@ -51,21 +51,21 @@ async def test_plex_reachable_true_on_200():
 @respx.mock
 async def test_plex_reachable_false_on_401():
     _clear_reachable()
-    respx.get(f"{PLEX_URL}/identity").mock(return_value=httpx.Response(401))
+    respx.get(f"{settings.PLEX_URL}/").mock(return_value=httpx.Response(401))
     assert await plex.plex_reachable() is False
 
 
 @respx.mock
 async def test_plex_reachable_false_on_exception():
     _clear_reachable()
-    respx.get(f"{PLEX_URL}/identity").mock(side_effect=httpx.ConnectError("boom"))
+    respx.get(f"{settings.PLEX_URL}/").mock(side_effect=httpx.ConnectError("boom"))
     assert await plex.plex_reachable() is False
 
 
 @respx.mock
 async def test_plex_reachable_uses_cache():
     _clear_reachable()
-    route = respx.get(f"{PLEX_URL}/identity").mock(return_value=httpx.Response(200))
+    route = respx.get(f"{settings.PLEX_URL}/").mock(return_value=httpx.Response(200))
     assert await plex.plex_reachable() is True
     # Second call is served from the cache; no additional Plex round-trip.
     assert await plex.plex_reachable() is True
@@ -75,13 +75,13 @@ async def test_plex_reachable_uses_cache():
 # ---- plex_get ---------------------------------------------------------------
 
 async def test_plex_get_returns_none_when_unconfigured(monkeypatch):
-    monkeypatch.setattr(plex, "PLEX_URL", "")
+    monkeypatch.setitem(settings._values, "PLEX_URL", "")
     assert await plex.plex_get("/library/sections") is None
 
 
 @respx.mock
 async def test_plex_get_success():
-    respx.get(f"{PLEX_URL}/library/sections").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(
         return_value=httpx.Response(200, json={"ok": True})
     )
     assert await plex.plex_get("/library/sections") == {"ok": True}
@@ -89,20 +89,20 @@ async def test_plex_get_success():
 
 @respx.mock
 async def test_plex_get_non_200_returns_none():
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(500))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(500))
     assert await plex.plex_get("/library/sections") is None
 
 
 @respx.mock
 async def test_plex_get_exception_returns_none():
-    respx.get(f"{PLEX_URL}/library/sections").mock(side_effect=httpx.ConnectError("x"))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(side_effect=httpx.ConnectError("x"))
     assert await plex.plex_get("/library/sections") is None
 
 
 @respx.mock
 async def test_plex_get_caches_by_ttl():
     plex._plex_cache.clear()
-    route = respx.get(f"{PLEX_URL}/library/all").mock(
+    route = respx.get(f"{settings.PLEX_URL}/library/all").mock(
         return_value=httpx.Response(200, json={"n": 1})
     )
     first = await plex.plex_get("/library/all", params={"a": "1", "b": "2"}, cache_ttl=30)
@@ -118,7 +118,7 @@ async def test_plex_get_cache_evicts_when_full():
     # Pre-fill the cache past the max so the next store triggers a clear().
     for i in range(plex._PLEX_CACHE_MAX + 1):
         plex._plex_cache[f"stale-{i}"] = (2**31, {})
-    respx.get(f"{PLEX_URL}/library/fresh").mock(
+    respx.get(f"{settings.PLEX_URL}/library/fresh").mock(
         return_value=httpx.Response(200, json={"fresh": True})
     )
     assert await plex.plex_get("/library/fresh", cache_ttl=30) == {"fresh": True}
@@ -223,13 +223,13 @@ def test_map_plex_item_defaults_and_leafcount_fallback():
 # ---- plex_upload_subtitle ---------------------------------------------------
 
 async def test_plex_upload_subtitle_unconfigured(monkeypatch):
-    monkeypatch.setattr(plex, "PLEX_URL", "")
+    monkeypatch.setitem(settings._values, "PLEX_URL", "")
     assert await plex.plex_upload_subtitle("1", b"data", "en", "srt", "t") is False
 
 
 @respx.mock
 async def test_plex_upload_subtitle_success_200():
-    route = respx.post(f"{PLEX_URL}/library/metadata/1/subtitles").mock(
+    route = respx.post(f"{settings.PLEX_URL}/library/metadata/1/subtitles").mock(
         return_value=httpx.Response(200)
     )
     assert await plex.plex_upload_subtitle("1", b"data", "en", "srt", "t") is True
@@ -238,7 +238,7 @@ async def test_plex_upload_subtitle_success_200():
 
 @respx.mock
 async def test_plex_upload_subtitle_success_201():
-    respx.post(f"{PLEX_URL}/library/metadata/2/subtitles").mock(
+    respx.post(f"{settings.PLEX_URL}/library/metadata/2/subtitles").mock(
         return_value=httpx.Response(201)
     )
     assert await plex.plex_upload_subtitle("2", b"data", "en", "srt", "t") is True
@@ -246,7 +246,7 @@ async def test_plex_upload_subtitle_success_201():
 
 @respx.mock
 async def test_plex_upload_subtitle_bad_status_returns_false():
-    respx.post(f"{PLEX_URL}/library/metadata/3/subtitles").mock(
+    respx.post(f"{settings.PLEX_URL}/library/metadata/3/subtitles").mock(
         return_value=httpx.Response(500, text="nope")
     )
     assert await plex.plex_upload_subtitle("3", b"data", "en", "srt", "t") is False
@@ -254,7 +254,7 @@ async def test_plex_upload_subtitle_bad_status_returns_false():
 
 @respx.mock
 async def test_plex_upload_subtitle_exception_returns_false():
-    respx.post(f"{PLEX_URL}/library/metadata/4/subtitles").mock(
+    respx.post(f"{settings.PLEX_URL}/library/metadata/4/subtitles").mock(
         side_effect=httpx.ConnectError("x")
     )
     assert await plex.plex_upload_subtitle("4", b"data", "en", "srt", "t") is False

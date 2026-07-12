@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from .client_auth import resolve_caller_identity, require_plex_user, require_plex_user_token
-from .config import OVERSEERR_API_KEY, OVERSEERR_URL, log
+from .config import log, settings
 
 router = APIRouter()
 
@@ -38,9 +38,9 @@ async def _overseerr_user_maps() -> tuple[dict[int, int], dict[str, int]]:
             skip, take = 0, 100
             while True:
                 resp = await client.get(
-                    f"{OVERSEERR_URL}/api/v1/user",
+                    f"{settings.OVERSEERR_URL}/api/v1/user",
                     params={"take": take, "skip": skip},
-                    headers={"X-Api-Key": OVERSEERR_API_KEY},
+                    headers={"X-Api-Key": settings.OVERSEERR_API_KEY},
                 )
                 if resp.status_code != 200:
                     log.error("Overseerr user list failed: %s", resp.status_code)
@@ -98,9 +98,9 @@ async def _import_overseerr_user(plex_id: int) -> Optional[int]:
     try:
         async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
             resp = await client.post(
-                f"{OVERSEERR_URL}/api/v1/user/import-from-plex",
+                f"{settings.OVERSEERR_URL}/api/v1/user/import-from-plex",
                 json={"plexIds": [str(plex_id)]},
-                headers={"X-Api-Key": OVERSEERR_API_KEY, "Content-Type": "application/json"},
+                headers={"X-Api-Key": settings.OVERSEERR_API_KEY, "Content-Type": "application/json"},
             )
         if resp.status_code not in (200, 201):
             log.error("Overseerr user import failed: %s %s", resp.status_code, resp.text[:200])
@@ -176,7 +176,7 @@ async def overseerr_request(
     req: OverseerrRequest,
     token: str = Depends(require_plex_user_token),
 ):
-    if not OVERSEERR_URL or not OVERSEERR_API_KEY:
+    if not settings.OVERSEERR_URL or not settings.OVERSEERR_API_KEY:
         raise HTTPException(503, "Overseerr not configured")
 
     # Map our media_type to Overseerr's mediaType
@@ -200,10 +200,10 @@ async def overseerr_request(
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
-            f"{OVERSEERR_URL}/api/v1/request",
+            f"{settings.OVERSEERR_URL}/api/v1/request",
             json=body,
             headers={
-                "X-Api-Key": OVERSEERR_API_KEY,
+                "X-Api-Key": settings.OVERSEERR_API_KEY,
                 "Content-Type": "application/json",
             },
         )
@@ -218,7 +218,7 @@ async def overseerr_request(
 @router.get("/overseerr/requested", dependencies=[Depends(require_plex_user)])
 async def overseerr_requested():
     """Return all TMDB IDs that have been requested or are available in Overseerr."""
-    if not OVERSEERR_URL or not OVERSEERR_API_KEY:
+    if not settings.OVERSEERR_URL or not settings.OVERSEERR_API_KEY:
         return {"movie": [], "tv": []}
 
     requested_movies = []
@@ -232,9 +232,9 @@ async def overseerr_requested():
             page_size = 50
             while True:
                 resp = await client.get(
-                    f"{OVERSEERR_URL}/api/v1/media",
+                    f"{settings.OVERSEERR_URL}/api/v1/media",
                     params={"take": page_size, "skip": page * page_size},
-                    headers={"X-Api-Key": OVERSEERR_API_KEY},
+                    headers={"X-Api-Key": settings.OVERSEERR_API_KEY},
                 )
                 if resp.status_code != 200:
                     log.error("Overseerr media list failed: %s", resp.status_code)
@@ -270,16 +270,16 @@ async def overseerr_requested():
 @router.get("/overseerr/search", dependencies=[Depends(require_plex_user)])
 async def overseerr_search(query: str = Query(..., min_length=1)):
     """Search Overseerr and return results in DiscoverItem format."""
-    if not OVERSEERR_URL or not OVERSEERR_API_KEY:
+    if not settings.OVERSEERR_URL or not settings.OVERSEERR_API_KEY:
         raise HTTPException(503, "Overseerr not configured")
 
     try:
         encoded_query = quote(query.strip())
-        search_url = f"{OVERSEERR_URL}/api/v1/search?query={encoded_query}&page=1&language=en"
+        search_url = f"{settings.OVERSEERR_URL}/api/v1/search?query={encoded_query}&page=1&language=en"
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
             resp = await client.get(
                 search_url,
-                headers={"X-Api-Key": OVERSEERR_API_KEY},
+                headers={"X-Api-Key": settings.OVERSEERR_API_KEY},
             )
             if resp.status_code != 200:
                 log.error("Overseerr search failed: %s %s", resp.status_code, resp.text[:200])
@@ -338,7 +338,7 @@ async def overseerr_details(
     Returns overview, backdrop, runtime, genres and cast so the Discover detail page can look
     like the library one for items the user doesn't own yet.
     """
-    if not OVERSEERR_URL or not OVERSEERR_API_KEY:
+    if not settings.OVERSEERR_URL or not settings.OVERSEERR_API_KEY:
         raise HTTPException(503, "Overseerr not configured")
 
     overseerr_type = "movie" if media_type == "movie" else "tv"
@@ -346,8 +346,8 @@ async def overseerr_details(
     try:
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
             resp = await client.get(
-                f"{OVERSEERR_URL}/api/v1/{overseerr_type}/{tmdb_id}",
-                headers={"X-Api-Key": OVERSEERR_API_KEY},
+                f"{settings.OVERSEERR_URL}/api/v1/{overseerr_type}/{tmdb_id}",
+                headers={"X-Api-Key": settings.OVERSEERR_API_KEY},
             )
         if resp.status_code != 200:
             log.error("Overseerr details failed: %s %s", resp.status_code, resp.text[:200])
@@ -419,4 +419,4 @@ async def overseerr_details(
 
 @router.get("/overseerr/status")
 async def overseerr_status():
-    return {"configured": bool(OVERSEERR_URL and OVERSEERR_API_KEY)}
+    return {"configured": bool(settings.OVERSEERR_URL and settings.OVERSEERR_API_KEY)}

@@ -584,6 +584,56 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
     background:rgba(220,60,50,.12);color:#d6473b;border:1px solid rgba(220,60,50,.25);}
   #auth-submit{width:100%;justify-content:center;padding:12px;font-size:14.5px;}
   .muted{color:var(--dim);}
+
+  /* Setup wizard (multi-step, on the auth-gate shell) */
+  .setup-card{max-width:440px;}
+  .setup-dots{display:flex;gap:7px;margin:0 0 18px;}
+  .setup-dots .dot{flex:1;height:4px;border-radius:999px;background:var(--line2);transition:background .2s;}
+  .setup-dots .dot.on{background:var(--accent);}
+  .setup-dots .dot.done{background:var(--ok);}
+  .setup-note{background:var(--accentSoft);color:var(--text);border:1px solid var(--line);
+    border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5;margin-bottom:14px;}
+  .setup-testrow{display:flex;align-items:center;gap:10px;margin-top:4px;}
+  .setup-res{font-size:12.5px;font-weight:600;}
+  .setup-res.ok{color:var(--ok);} .setup-res.bad{color:var(--bad);}
+  .setup-foot{display:flex;align-items:center;gap:8px;margin-top:22px;}
+
+  /* Starter-sections wizard (centered modal over a scrim) */
+  .wiz-overlay{position:fixed;inset:0;z-index:1900;display:flex;align-items:center;justify-content:center;
+    padding:24px;background:rgba(10,8,4,.46);backdrop-filter:blur(3px);}
+  .wiz-card{width:100%;max-width:520px;max-height:86vh;display:flex;flex-direction:column;
+    background:var(--elev);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow-lg);overflow:hidden;}
+  .wiz-head{display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line);}
+  .wiz-head .title{font-size:16px;font-weight:700;flex:1;}
+  .wiz-body{padding:18px 20px;overflow:auto;}
+  .wiz-foot{display:flex;align-items:center;gap:8px;padding:14px 20px;border-top:1px solid var(--line);}
+  .wiz-choices{display:grid;gap:12px;margin-top:8px;}
+  .wiz-choice{text-align:left;background:var(--bg2);border:1px solid var(--line2);border-radius:14px;
+    padding:16px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+  .wiz-choice:hover{border-color:var(--accent);box-shadow:var(--shadow-sm);}
+  .wiz-choice.primary{border-color:var(--accent);background:var(--accentSoft);}
+  .wiz-choice .ic{color:var(--accent);margin-bottom:8px;}
+  .wiz-choice .t{font-weight:700;font-size:14.5px;}
+  .wiz-choice .d{color:var(--dim);font-size:12.5px;margin-top:3px;line-height:1.45;}
+  .wiz-sub{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--dim);margin:16px 0 8px;}
+  .wiz-sub:first-child{margin-top:0;}
+  .wiz-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);
+    border-radius:10px;margin-bottom:6px;background:var(--bg2);}
+  .wiz-row .nm{font-weight:600;font-size:13.5px;flex:1;}
+  .wiz-row.skip{background:transparent;border-style:dashed;}
+  .wiz-row.skip .nm{color:var(--dim);font-weight:500;}
+  .wiz-row .rsn{color:var(--faint);font-size:12px;}
+  .wiz-row .pills{display:flex;gap:4px;}
+  .wiz-row .pill{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--bg3);color:var(--dim);border:1px solid var(--line);}
+  .wiz-row .pill.type{background:var(--accentSoft);color:var(--accent);border-color:transparent;}
+  .wiz-cols{display:flex;flex-direction:column;gap:2px;margin-bottom:4px;border:1px solid var(--line);border-radius:11px;padding:6px;background:var(--bg2);max-height:190px;overflow:auto;}
+  .wiz-col{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;cursor:pointer;font-size:13.5px;}
+  .wiz-col:hover{background:var(--bg3);}
+  .wiz-col input{margin:0;flex-shrink:0;}
+  .board-empty{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;
+    padding:34px 20px;border:1px dashed var(--line2);border-radius:16px;margin:12px;background:var(--bg2);}
+  .board-empty .t{font-weight:650;color:var(--dim);font-size:13.5px;}
 </style>
 <div id="auth-gate" class="auth-gate hidden">
   <form class="auth-card" id="auth-form" onsubmit="return submitAuth(event)">
@@ -601,19 +651,33 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   </form>
 </div>
 
-<!-- Plex setup gate: shown before anything else until Plex is reachable. -->
-<div id="plex-gate" class="auth-gate hidden">
-  <div class="auth-card">
+<!-- Setup wizard: connect + test integrations. Blocks the dashboard until Plex
+     is reachable; the other steps are optional and skippable. -->
+<div id="setup-gate" class="auth-gate hidden">
+  <div class="auth-card setup-card">
     <div class="auth-brand">
-      <div><h2>Connect Plex first</h2><p class="muted" id="plex-gate-sub">Poptonium needs a working Plex Media Server connection before you can use the dashboard.</p></div>
+      <div><h2 id="setup-title">Set up Poptonium</h2><p class="muted" id="setup-sub"></p></div>
     </div>
-    <div class="auth-err" id="plex-gate-detail" style="margin-bottom:12px"></div>
-    <p class="muted" style="font-size:13px;line-height:1.5">
-      Set <code>PLEX_URL</code> (for example <code>http://plex:32400</code>) and
-      <code>PLEX_TOKEN</code> as container variables, then restart the container.
-      These are secrets and are not editable here.
-    </p>
-    <button class="btn" type="button" id="plex-gate-retry" onclick="gate()">Retry</button>
+    <div class="setup-dots" id="setup-dots"></div>
+    <div id="setup-body"></div>
+    <div class="setup-foot">
+      <button class="btn ghost" type="button" id="setup-back" onclick="setupBack()">Back</button>
+      <div style="flex:1"></div>
+      <button class="btn subtle" type="button" id="setup-skip" onclick="setupSkip()">Skip</button>
+      <button class="btn" type="button" id="setup-next" onclick="setupNext()">Next</button>
+    </div>
+  </div>
+</div>
+
+<!-- Starter-sections wizard: shown on a brand-new, empty Library board. -->
+<div id="wiz" class="wiz-overlay hidden">
+  <div class="wiz-card">
+    <div class="wiz-head">
+      <div class="title" id="wiz-title">Set up your Library</div>
+      <button class="iconbtn" type="button" onclick="closeWizard()">✕</button>
+    </div>
+    <div class="wiz-body" id="wiz-body"></div>
+    <div class="wiz-foot" id="wiz-foot"></div>
   </div>
 </div>
 
@@ -627,7 +691,6 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
     <button data-tab="integrations" onclick="switchTab('integrations')">Integrations</button>
     <button data-tab="sections" class="active" onclick="switchTab('sections')">Sections</button>
     <button data-tab="ratings" onclick="switchTab('ratings')">Ratings</button>
-    <button data-tab="settings" onclick="switchTab('settings')">Settings</button>
   </nav>
   <button class="btn ghost sm hidden" id="logout-btn" onclick="logout()" style="margin-left:auto">Sign out</button>
 </header>
@@ -735,12 +798,6 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   </section>
 
   <!-- ════════ SETTINGS ════════ -->
-  <section class="tab" id="tab-settings">
-    <div class="page-head">
-      <div><div class="title">Configuration</div><div class="sub">Read-only. Set these via the Unraid template / environment variables. Secrets are masked.</div></div>
-    </div>
-    <div class="card"><table class="tbl"><tbody id="config"></tbody></table></div>
-  </section>
 </main>
 
 <!-- ════════ EDITOR DRAWER ════════ -->
@@ -1152,6 +1209,7 @@ const I = {
   plug:'<path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0zM12 16v6"/>',
   sub:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h6M15 15h2M7 11h2M11 11h6"/>',
   layout:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
 };
 function icon(name, cls){ return `<svg class="${cls||''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${I[name]||''}</svg>`; }
 // Wrap an arbitrary inner-SVG string (from a plugin manifest's `icon`) in our chrome.
@@ -1268,21 +1326,78 @@ async function loadStatus(){
     <td style="text-align:right"><button class="btn ghost sm" onclick="runAction('${j.id}')">${icon("refresh")} Run now</button></td></tr>`).join("")
     : `<tr><td class="muted">No scheduled jobs</td></tr>`);
 
-  const cfg=s.config;
-  $("config").innerHTML = Object.entries(cfg).map(([k,v])=>`
-    <tr><td class="k">${esc(k)}</td><td>${v? `<span class="mono" style="font-size:12.5px">${esc(v)}</span>` : '<span class="muted">unset</span>'}</td></tr>`).join("");
 }
 async function runAction(job){ try{ await api(`/admin/cron/${job}/run`,{method:"POST"}); toast("Started: "+job); setTimeout(loadStatus,1400);}catch(e){toast(e.message,true);} }
 async function clearCache(which){ if(!confirm("Clear the "+which+" cache?")) return; try{ await api(`/admin/cache/clear?which=${which}`,{method:"POST"}); toast("Cleared "+which+" cache"); setTimeout(loadStatus,600);}catch(e){toast(e.message,true);} }
 /* ============================================================
    INTEGRATIONS
    ============================================================ */
-// Core (built-in) integrations: read-only health, no settings.
+// Core (built-in) integrations: editable + testable, saved to the config file.
 const INTEG_DEFS = [
   {key:"plex",         name:"Plex",          icon:"film"},
+  {key:"mdblist",      name:"MDbList",       icon:"star"},
   {key:"overseerr",    name:"Overseerr",     icon:"search"},
   {key:"opensubtitles",name:"OpenSubtitles", icon:"sub"},
 ];
+const CORE_FIELDS = {
+  plex:[{k:"PLEX_URL",label:"Plex URL",ph:"http://plex:32400"},{k:"PLEX_TOKEN",label:"Token",secret:true}],
+  mdblist:[{k:"MDBLIST_API_KEY",label:"API key",secret:true}],
+  overseerr:[{k:"OVERSEERR_URL",label:"URL",ph:"http://overseerr:5055"},{k:"OVERSEERR_API_KEY",label:"API key",secret:true}],
+  opensubtitles:[{k:"OPENSUBTITLES_API_KEY",label:"API key",secret:true},{k:"OPENSUBTITLES_USERNAME",label:"Username"},{k:"OPENSUBTITLES_PASSWORD",label:"Password",secret:true}],
+};
+function coreStatus(key, s){
+  if(key==="mdblist") return {configured:s.ratings && s.ratings.configured, healthy:null};
+  return s[key] || {};
+}
+function coreIntegCard(def, s, cfg){
+  const stt = coreStatus(def.key, s);
+  const state = !stt.configured ? "" : (stt.healthy===false ? "down" : "on");
+  const label = !stt.configured ? "Not configured" : (stt.healthy===false ? "Unavailable" : "Connected");
+  const fields = CORE_FIELDS[def.key].map(f=>{
+    const isSet = cfg[f.k+"_set"];
+    const val = f.secret ? "" : (cfg[f.k]||"");
+    const ph = f.secret ? (isSet ? "•••••••• set — blank keeps it" : "not set") : (f.ph||"");
+    return `<label class="auth-field" style="margin-bottom:10px"><span>${esc(f.label)}</span>
+      <input id="ci-${def.key}-${f.k}" type="${f.secret?'password':'text'}" value="${esc(val)}"
+             placeholder="${esc(ph)}" autocomplete="off"></label>`;
+  }).join("");
+  return `<div class="card integ-card">
+    <div class="integ-card-head">
+      <span class="ico">${icon(def.icon)}</span>
+      <div style="flex:1"><div class="nm">${def.name}</div></div>
+      <span class="integ ${state}"><span class="led"></span><span class="st">${label}</span></span>
+    </div>
+    <div class="integ-settings" style="margin-top:10px">${fields}
+      <div class="actions-row" style="margin-top:6px;align-items:center">
+        <button class="btn ghost sm" type="button" onclick="testCore('${def.key}')">Test</button>
+        <button class="btn sm" type="button" onclick="saveCore('${def.key}')">Save</button>
+        <span class="setup-res" id="ci-res-${def.key}" style="margin-left:6px"></span>
+      </div>
+    </div></div>`;
+}
+function collectCore(key){
+  const out={};
+  CORE_FIELDS[key].forEach(f=>{
+    const el=$(`ci-${key}-${f.k}`); if(!el) return;
+    const v=el.value.trim();
+    if(f.secret){ if(v) out[f.k]=v; } else { out[f.k]=v; }
+  });
+  return out;
+}
+async function testCore(key){
+  const res=$(`ci-res-${key}`); res.textContent="Testing…"; res.className="setup-res";
+  try{
+    const r=await api("/admin/config/test",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({service:key, values:collectCore(key)})});
+    res.textContent=r.detail||(r.ok?"Connected":"Failed"); res.className="setup-res "+(r.ok?"ok":"bad");
+  }catch(e){ res.textContent=e.message; res.className="setup-res bad"; }
+}
+async function saveCore(key){
+  try{
+    await api("/admin/config",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(collectCore(key))});
+    toast(INTEG_DEFS.find(d=>d.key===key).name+" saved"); loadIntegrations();
+  }catch(e){ toast(e.message,true); }
+}
 // Registered plugins, indexed by id, + their loaded settings.
 let PLUGINS_BY_ID = {};
 let PLUGIN_SETTINGS = {};   // pid -> {values:{}, secrets_set:{}}
@@ -1290,18 +1405,8 @@ let PLUGIN_SETTINGS = {};   // pid -> {values:{}, secrets_set:{}}
 async function loadIntegrations(){
   let s; try{ s=await api("/admin/status"); }catch(e){ toast("Status failed",true); return; }
 
-  const core = INTEG_DEFS.map(d=>{
-    const st = s[d.key] || {};
-    const state = !st.configured ? "" : (st.healthy===false ? "down" : "on");
-    const label = !st.configured ? "Not configured" : (st.healthy===false ? "Unavailable" : "Connected");
-    const url = st.url ? `<div class="muted" style="font-size:12px;margin-top:2px">${esc(st.url)}</div>` : "";
-    return `<div class="card integ-card">
-      <div class="integ-card-head">
-        <span class="ico">${icon(d.icon)}</span>
-        <div style="flex:1"><div class="nm">${d.name}</div>${url}</div>
-        <span class="integ ${state}"><span class="led"></span><span class="st">${label}</span></span>
-      </div></div>`;
-  }).join("");
+  const cfg = s.config || {};
+  const core = INTEG_DEFS.map(d=>coreIntegCard(d, s, cfg)).join("");
 
   const plugins = s.plugins || [];
   PLUGINS_BY_ID = {};
@@ -1514,6 +1619,116 @@ async function loadSections(){
   try{ STATE.sections = await api("/sections"); }
   catch(e){ toast("Load sections failed",true); return; }
   renderBoard();
+  maybeShowSectionsWizard();
+}
+
+/* ---------- Starter-sections wizard ---------- */
+let WIZ = {screen:"choose", preview:null, collections:[]};
+let wizAutoShown = false;
+
+async function maybeShowSectionsWizard(){
+  if(DEMO || wizAutoShown) return;
+  if(STATE.sections.length > 0) return;
+  wizAutoShown = true;
+  let dismissed = false;
+  try{ dismissed = !!(await api("/admin/status")).onboarding_dismissed; }catch(e){}
+  if(!dismissed) openWizard();
+}
+function wizTitle(t){
+  return (t||"").replace(/\{(director|genre|actor|library|libraries|country)\}/g,
+    (m,w)=>({director:"Director",genre:"Genre",actor:"Actor",library:"Library",libraries:"Libraries",country:"Country"}[w]||m)).trim();
+}
+function openWizard(){ WIZ={screen:"choose",preview:null,collections:[]}; $("wiz").classList.remove("hidden"); renderWizard(); }
+function closeWizard(){ $("wiz").classList.add("hidden"); }
+function renderWizard(){ WIZ.screen==="choose" ? renderWizChoose() : renderWizPreview(); }
+
+function renderWizChoose(){
+  $("wiz-title").textContent = "Set up your Library";
+  $("wiz-body").innerHTML = `
+    <p class="muted" style="font-size:13px;line-height:1.5;margin:0 0 6px">Your Library page is empty. Start from scratch, or add a set of starter sections adapted to your Plex libraries.</p>
+    <div class="wiz-choices">
+      <button class="wiz-choice" type="button" onclick="wizStartClean()">
+        <div class="ic">${icon("layers")}</div><div class="t">Start from scratch</div>
+        <div class="d">An empty board you build section by section.</div></button>
+      <button class="wiz-choice primary" type="button" onclick="wizChooseStarter()">
+        <div class="ic">${icon("star")}</div><div class="t">Add starter sections</div>
+        <div class="d">Spotlights, Trending, director, actor & genre shelves — tailored to what your server actually has.</div></button>
+    </div>`;
+  $("wiz-foot").innerHTML = "";
+}
+async function wizStartClean(){
+  try{ await api("/admin/onboarding/dismiss",{method:"POST"}); }catch(e){}
+  closeWizard();
+}
+async function wizChooseStarter(){
+  $("wiz-title").textContent = "Starter sections";
+  $("wiz-body").innerHTML = `<div class="muted" style="padding:20px 0">Analyzing your Plex libraries…</div>`;
+  $("wiz-foot").innerHTML = "";
+  try{ WIZ.preview = await api("/admin/sections/seed/preview"); }
+  catch(e){ $("wiz-body").innerHTML = `<div class="muted">Couldn't build a preview: ${esc(e.message)}</div>`; return; }
+  WIZ.screen = "preview"; renderWizPreview();
+}
+function wizToggleCol(key, on){
+  key = String(key);
+  if(on){
+    const c = (WIZ.preview.collections||[]).find(x=>String(x.key)===key);
+    if(c && !WIZ.collections.some(x=>x.key===key)) WIZ.collections.push({key:key, title:c.title||""});
+  }else{
+    WIZ.collections = WIZ.collections.filter(x=>x.key!==key);
+  }
+  renderWizPreview();   // reactively move Recommendations planned/skipped + update count
+}
+function updateWizFooter(n){
+  $("wiz-foot").innerHTML =
+    `<button class="btn ghost" type="button" onclick="WIZ.screen='choose';renderWizard()">Back</button>
+     <div style="flex:1"></div>
+     <button class="btn" type="button" onclick="wizSeed()" ${n?'':'disabled'}>Add ${n} section${n===1?'':'s'}</button>`;
+}
+function renderWizPreview(){
+  const pv = WIZ.preview, cols = pv.collections||[];
+  const hasCol = WIZ.collections.length > 0;
+  // Recommendations is the only collection-gated section; reflect the current pick
+  // locally so the lists + count update instantly without re-querying Plex.
+  const planned = (pv.planned||[]).slice();
+  const skipped = (pv.skipped||[]).filter(s=>s.title!=="Recommendations");
+  if(hasCol){
+    if(!planned.some(p=>p.title==="Recommendations"))
+      planned.push({title:"Recommendations", type:"plex_collection", style:"hero", position:"after_shows"});
+  }else{
+    const rec = (pv.skipped||[]).find(s=>s.title==="Recommendations");
+    if(rec) skipped.push(rec);
+  }
+  $("wiz-title").textContent = "Starter sections";
+  const plannedHtml = planned.length ? planned.map(p=>`
+    <div class="wiz-row"><span class="nm">${esc(wizTitle(p.title))}</span>
+      <span class="pills"><span class="pill type">${esc((p.type||'').replace('plex_collection','collection'))}</span>
+      <span class="pill">${esc(p.style)}</span></span></div>`).join("")
+    : `<div class="muted" style="font-size:13px">Nothing could be adapted for this server yet.</div>`;
+  const colPicker = cols.length ? `
+    <div class="wiz-sub">Recommendations shelf (optional)</div>
+    <div class="muted" style="font-size:12px;margin:-2px 0 8px;line-height:1.45">Pick one or more collections to feature. Multiple are merged into a single shelf.</div>
+    <div class="wiz-cols">
+      ${cols.map(c=>{
+        const on = WIZ.collections.some(x=>x.key===String(c.key));
+        const lib = c.library ? ` <span class="muted">· ${esc(c.library)}</span>` : "";
+        const cnt = c.count ? ` <span class="muted">· ${c.count}</span>` : "";
+        return `<label class="wiz-col"><input type="checkbox" ${on?"checked":""} onchange="wizToggleCol('${esc(c.key)}',this.checked)">
+          <span>${esc(c.title||"Untitled")}${lib}${cnt}</span></label>`;
+      }).join("")}
+    </div>` : "";
+  const skippedHtml = skipped.length ? `<div class="wiz-sub">Skipped for this server</div>` +
+    skipped.map(s=>`<div class="wiz-row skip"><span class="nm">${esc(wizTitle(s.title))}</span><span class="rsn">${esc(s.reason)}</span></div>`).join("") : "";
+  $("wiz-body").innerHTML = `<div class="wiz-sub">Will be added</div>${plannedHtml}${colPicker}${skippedHtml}`;
+  updateWizFooter(planned.length);
+}
+async function wizSeed(){
+  const body = WIZ.collections.length ? {collections: WIZ.collections} : {};
+  try{
+    const r = await api("/admin/sections/seed",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    toast(`Added ${r.created.length} section${r.created.length===1?'':'s'}`);
+    closeWizard();
+    await loadSections();
+  }catch(e){ toast(e.message,true); }
 }
 function sectionsIn(pos){
   return STATE.sections.filter(s=>(s.position||"top")===pos).sort((a,b)=>a.sort_order-b.sort_order);
@@ -1521,6 +1736,10 @@ function sectionsIn(pos){
 function renderBoard(){
   const host = $("board-device");
   let html = `<div class="board-statusbar"><span class="lib">Library</span><span>WYSIWYG · top → bottom</span></div>`;
+  if(!STATE.sections.length){
+    html += `<div class="board-empty"><div class="t">Your Library is empty.</div>
+      <button class="btn" type="button" onclick="openWizard()">${icon("star")} Add starter sections</button></div>`;
+  }
   ZONES.forEach((z,i)=>{
     html += renderZone(z.pos);
     const anchor = ANCHORS.find(a=>a.after===z.pos);
@@ -2282,12 +2501,12 @@ async function submitAuth(ev){
       body: JSON.stringify({username, password}),
     });
     if(!r.ok){ let d=""; try{d=(await r.json()).detail||"";}catch(e){} throw new Error(d || `${r.status} ${r.statusText}`); }
-    // Authenticated: hide the gate and boot the app.
+    // Authenticated: hide the gate; run the setup wizard if Plex isn't ready yet.
     $("auth-gate").classList.add("hidden");
     $("auth-pass").value=""; $("auth-confirm").value="";
     $("logout-btn").classList.remove("hidden");
-    startApp();
     toast(AUTH_MODE==="setup" ? "Admin account created" : "Signed in");
+    enterApp();
   }catch(e){
     showAuthErr(e.message || "Sign in failed");
   }finally{
@@ -2302,8 +2521,8 @@ async function logout(){
 }
 
 async function gate(){
-  // Decide setup vs login vs straight-in. If the backend is unreachable we fall
-  // through to demo mode (no auth) so the design preview still works offline.
+  // Decide setup-account vs login vs straight-in. If the backend is unreachable we
+  // fall through to demo mode (no auth) so the design preview still works offline.
   let st;
   try{
     const r = await fetch(API_BASE + "/admin/auth/state", {credentials:"same-origin"});
@@ -2312,22 +2531,132 @@ async function gate(){
   }catch(e){
     DEMO = true; showDemoBanner(); startApp(); return;
   }
-  // Plex is mandatory: block before login/setup until it's reachable.
-  if(!st.plex_ready){
-    $("auth-gate").classList.add("hidden");
-    $("plex-gate-detail").textContent = st.plex_configured
-      ? "Plex is configured but not reachable. Check PLEX_URL and PLEX_TOKEN, then restart."
-      : "Plex is not configured yet.";
-    $("plex-gate").classList.remove("hidden");
+  // Admin account first (config editing is admin-gated). Once authenticated, the
+  // setup wizard connects Plex (and optional integrations) in-app.
+  if(!st.authenticated){
+    openAuthGate(st.configured ? "login" : "setup");
     return;
   }
-  $("plex-gate").classList.add("hidden");
-  if(st.authenticated){
-    $("logout-btn").classList.remove("hidden");
-    startApp();
-  }else{
-    openAuthGate(st.configured ? "login" : "setup");
+  $("logout-btn").classList.remove("hidden");
+  enterApp(st);
+}
+
+// After authentication: run the setup wizard until Plex is reachable, then boot.
+async function enterApp(st){
+  if(!st || typeof st.plex_ready === "undefined"){
+    try{ st = await (await fetch(API_BASE + "/admin/auth/state", {credentials:"same-origin"})).json(); }
+    catch(e){ st = {plex_ready:true}; }
   }
+  if(!st.plex_ready){ openSetupWizard(); return; }
+  closeSetupWizard();
+  startApp();
+}
+
+/* ---------- Setup wizard ---------- */
+const SETUP_STEPS = [
+  {key:"plex", name:"Plex", required:true, fields:[
+    {k:"PLEX_URL", label:"Plex URL", ph:"http://plex:32400"},
+    {k:"PLEX_TOKEN", label:"Plex token", secret:true}]},
+  {key:"mdblist", name:"MDbList", note:"Needed for rating-based shelves (Movie/TV Spotlight) and the Trending shelf. Without it, those sections are skipped or show recent titles instead.", fields:[
+    {k:"MDBLIST_API_KEY", label:"MDbList API key", secret:true}]},
+  {key:"overseerr", name:"Overseerr", note:"Powers in-app requests and discovery. Optional.", fields:[
+    {k:"OVERSEERR_URL", label:"Overseerr URL", ph:"http://overseerr:5055"},
+    {k:"OVERSEERR_API_KEY", label:"API key", secret:true}]},
+  {key:"opensubtitles", name:"OpenSubtitles", note:"Enables subtitle download. Optional.", fields:[
+    {k:"OPENSUBTITLES_API_KEY", label:"API key", secret:true},
+    {k:"OPENSUBTITLES_USERNAME", label:"Username"},
+    {k:"OPENSUBTITLES_PASSWORD", label:"Password", secret:true}]},
+];
+let SETUP = {step:0, config:{}, tested:{}};
+
+function openSetupWizard(){
+  SETUP = {step:0, config:{}, tested:{}};
+  $("auth-gate").classList.add("hidden");
+  $("setup-gate").classList.remove("hidden");
+  renderSetupStep();
+}
+function closeSetupWizard(){ $("setup-gate").classList.add("hidden"); }
+
+function renderSetupStep(){
+  const i = SETUP.step, step = SETUP_STEPS[i], last = i === SETUP_STEPS.length-1;
+  $("setup-dots").innerHTML = SETUP_STEPS.map((s,idx)=>
+    `<span class="dot ${idx===i?'on':''} ${idx<i?'done':''}"></span>`).join("");
+  $("setup-title").textContent = step.required ? `Connect ${step.name}` : `${step.name}`;
+  $("setup-sub").textContent = step.required
+    ? "Poptonium needs a working Plex connection to run."
+    : "Optional — add it now, or skip and set it up later under Integrations.";
+  const note = step.note ? `<div class="setup-note">${esc(step.note)}</div>` : "";
+  const fields = step.fields.map(f=>`
+    <label class="auth-field"><span>${esc(f.label)}</span>
+      <input id="su-${f.k}" type="${f.secret?'password':'text'}" placeholder="${esc(f.ph||'')}"
+             autocomplete="off" oninput="onSetupInput()"></label>`).join("");
+  $("setup-body").innerHTML = note + fields +
+    `<div class="setup-testrow"><button class="btn ghost sm" type="button" onclick="setupTest()">Test connection</button>
+       <span class="setup-res" id="setup-res"></span></div>`;
+  step.fields.forEach(f=>{ const el=$("su-"+f.k); if(el && SETUP.config[f.k]!=null) el.value=SETUP.config[f.k]; });
+  $("setup-back").style.visibility = i===0 ? "hidden" : "visible";
+  $("setup-skip").classList.toggle("hidden", !!step.required);
+  $("setup-next").textContent = last ? "Finish" : "Next";
+  $("setup-next").disabled = !!step.required && !SETUP.tested[step.key];
+}
+
+function collectSetup(step){
+  const out = {};
+  step.fields.forEach(f=>{
+    const el=$("su-"+f.k); if(!el) return;
+    const v = el.value.trim();
+    SETUP.config[f.k] = v;
+    if(f.secret){ if(v) out[f.k]=v; } else { out[f.k]=v; }
+  });
+  return out;
+}
+function onSetupInput(){
+  const step = SETUP_STEPS[SETUP.step];
+  if(step.required){ SETUP.tested[step.key]=false; $("setup-next").disabled=true; }
+}
+async function setupTest(){
+  const step = SETUP_STEPS[SETUP.step], res = $("setup-res");
+  res.textContent = "Testing…"; res.className = "setup-res";
+  try{
+    const r = await api("/admin/config/test", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({service:step.key, values:collectSetup(step)})});
+    res.textContent = r.detail || (r.ok ? "Connected" : "Failed");
+    res.className = "setup-res " + (r.ok ? "ok" : "bad");
+    SETUP.tested[step.key] = !!r.ok;
+    if(step.required) $("setup-next").disabled = !r.ok;
+  }catch(e){ res.textContent = e.message; res.className = "setup-res bad"; }
+}
+async function saveSetupStep(){
+  const step = SETUP_STEPS[SETUP.step];
+  const vals = collectSetup(step);
+  if(Object.keys(vals).length){
+    await api("/admin/config", {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(vals)});
+  }
+}
+async function setupNext(){
+  try{ await saveSetupStep(); }catch(e){ toast(e.message,true); return; }
+  if(SETUP.step < SETUP_STEPS.length-1){ SETUP.step++; renderSetupStep(); }
+  else await finishSetup();
+}
+function setupSkip(){
+  const step = SETUP_STEPS[SETUP.step];
+  step.fields.forEach(f=>{ SETUP.config[f.k]=""; });
+  if(SETUP.step < SETUP_STEPS.length-1){ SETUP.step++; renderSetupStep(); }
+  else finishSetup();
+}
+function setupBack(){ if(SETUP.step>0){ SETUP.step--; renderSetupStep(); } }
+async function finishSetup(){
+  let st;
+  try{ st = await (await fetch(API_BASE + "/admin/auth/state", {credentials:"same-origin"})).json(); }
+  catch(e){ st = {plex_ready:false}; }
+  if(!st.plex_ready){
+    SETUP.step = 0; renderSetupStep();
+    const res=$("setup-res"); if(res){ res.textContent="Plex still isn't reachable — check the URL and token."; res.className="setup-res bad"; }
+    return;
+  }
+  closeSetupWizard();
+  toast("Setup complete");
+  startApp();
 }
 
 /* ============================================================
@@ -2348,7 +2677,7 @@ function startApp(){
   // initial tab: sections is the centrepiece; allow ?screen= or #hash
   const screen = params.get("screen") || (location.hash||"").replace("#","") || "sections";
   loadStatus();           // populates version + settings regardless
-  switchTab(["dashboard","integrations","sections","ratings","settings"].includes(screen)?screen:"sections");
+  switchTab(["dashboard","integrations","sections","ratings"].includes(screen)?screen:"sections");
 }
 
 (function init(){

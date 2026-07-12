@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 
 from app import plex_proxy
-from app.config import PLEX_URL
+from app.config import settings
 
 
 def _app():
@@ -28,7 +28,7 @@ async def _client():
 def _mock_auth_gate():
     """The proxy is gated by require_plex_user, which validates the caller's token
     against GET /library/sections. Accept any token this test presents."""
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
 
 
 # ---- auth gate --------------------------------------------------------------
@@ -43,7 +43,7 @@ async def test_rejects_missing_token():
 
 @respx.mock
 async def test_rejects_bad_token():
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
     async with await _client() as ac:
         resp = await ac.get("/plex/status/sessions", headers={"X-Plex-Token": "bad"})
     assert resp.status_code == 401
@@ -73,7 +73,7 @@ async def test_503_when_proxy_sees_unconfigured(monkeypatch):
 @respx.mock
 async def test_proxies_get_passthrough_non_json():
     _mock_auth_gate()
-    up = respx.get(f"{PLEX_URL}/photo/thumb.jpg").mock(
+    up = respx.get(f"{settings.PLEX_URL}/photo/thumb.jpg").mock(
         return_value=httpx.Response(200, content=b"\xff\xd8imgbytes",
                                     headers={"content-type": "image/jpeg"})
     )
@@ -88,7 +88,7 @@ async def test_proxies_get_passthrough_non_json():
 @respx.mock
 async def test_forwards_path_and_client_headers():
     _mock_auth_gate()
-    route = respx.get(f"{PLEX_URL}/status/sessions").mock(
+    route = respx.get(f"{settings.PLEX_URL}/status/sessions").mock(
         return_value=httpx.Response(200, content=b"ok", headers={"content-type": "text/plain"})
     )
     async with await _client() as ac:
@@ -105,7 +105,7 @@ async def test_forwards_path_and_client_headers():
 @respx.mock
 async def test_injects_includeguids_for_library_get():
     _mock_auth_gate()
-    route = respx.get(f"{PLEX_URL}/library/sections/1/all").mock(
+    route = respx.get(f"{settings.PLEX_URL}/library/sections/1/all").mock(
         return_value=httpx.Response(200, content=b"ok", headers={"content-type": "text/plain"})
     )
     async with await _client() as ac:
@@ -116,7 +116,7 @@ async def test_injects_includeguids_for_library_get():
 @respx.mock
 async def test_no_includeguids_for_non_library_get():
     _mock_auth_gate()
-    route = respx.get(f"{PLEX_URL}/status/sessions").mock(
+    route = respx.get(f"{settings.PLEX_URL}/status/sessions").mock(
         return_value=httpx.Response(200, content=b"ok", headers={"content-type": "text/plain"})
     )
     async with await _client() as ac:
@@ -127,7 +127,7 @@ async def test_no_includeguids_for_non_library_get():
 @respx.mock
 async def test_forwards_post_body():
     _mock_auth_gate()
-    route = respx.post(f"{PLEX_URL}/playQueues").mock(
+    route = respx.post(f"{settings.PLEX_URL}/playQueues").mock(
         return_value=httpx.Response(200, content=b"ok", headers={"content-type": "text/plain"})
     )
     async with await _client() as ac:
@@ -140,7 +140,7 @@ async def test_forwards_post_body():
 @respx.mock
 async def test_upstream_http_error_becomes_502():
     _mock_auth_gate()
-    respx.get(f"{PLEX_URL}/status/sessions").mock(side_effect=httpx.ConnectError("down"))
+    respx.get(f"{settings.PLEX_URL}/status/sessions").mock(side_effect=httpx.ConnectError("down"))
     async with await _client() as ac:
         resp = await ac.get("/plex/status/sessions", headers={"X-Plex-Token": "tok"})
     assert resp.status_code == 502
@@ -149,7 +149,7 @@ async def test_upstream_http_error_becomes_502():
 @respx.mock
 async def test_upstream_non_200_status_passed_through():
     _mock_auth_gate()
-    respx.get(f"{PLEX_URL}/library/metadata/999").mock(
+    respx.get(f"{settings.PLEX_URL}/library/metadata/999").mock(
         return_value=httpx.Response(404, content=b"nope", headers={"content-type": "text/plain"})
     )
     async with await _client() as ac:
@@ -179,7 +179,7 @@ async def test_enriches_json_with_ratings(monkeypatch):
     }
     _stub_ratings(monkeypatch, cfg={"formula": {"missing_mdblist": "zero", "preset": "mdblist"}},
                   cache=cache)
-    respx.get(f"{PLEX_URL}/library/sections/1/all").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/all").mock(
         return_value=httpx.Response(200, json={
             "MediaContainer": {"Metadata": [
                 {"type": "movie", "title": "M", "Guid": [{"id": "tmdb://603"}]},
@@ -198,7 +198,7 @@ async def test_enriches_json_with_ratings(monkeypatch):
 async def test_enrich_noop_when_no_metadata(monkeypatch):
     _mock_auth_gate()
     _stub_ratings(monkeypatch)
-    respx.get(f"{PLEX_URL}/library/sections").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(
         return_value=httpx.Response(200, json={"MediaContainer": {"size": 0}},
                                     headers={"content-type": "application/json"}),
     )
@@ -213,7 +213,7 @@ async def test_enrich_skips_items_without_tmdb(monkeypatch):
     _mock_auth_gate()
     # No pairs (no tmdb guids) → ratings_for_tmdb never consulted; item unchanged.
     _stub_ratings(monkeypatch, cache={(1, "movie"): {"sources": {}}})
-    respx.get(f"{PLEX_URL}/hubs/home").mock(
+    respx.get(f"{settings.PLEX_URL}/hubs/home").mock(
         return_value=httpx.Response(200, json={
             "MediaContainer": {"Metadata": [{"type": "movie", "title": "no-guid"}]},
         }, headers={"content-type": "application/json"}),
@@ -228,7 +228,7 @@ async def test_enrich_skips_items_without_tmdb(monkeypatch):
 async def test_enrich_skips_when_no_matching_cache_row(monkeypatch):
     _mock_auth_gate()
     _stub_ratings(monkeypatch, cache={})  # tmdb present but no cached rating
-    respx.get(f"{PLEX_URL}/library/sections/1/all").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/all").mock(
         return_value=httpx.Response(200, json={
             "MediaContainer": {"Metadata": [
                 {"type": "movie", "title": "M", "Guid": [{"id": "tmdb://999"}]},
@@ -249,7 +249,7 @@ async def test_enrich_skips_untagged_item_in_mixed_list(monkeypatch):
     cache = {(603, "movie"): {"sources": {"mdblist": {"score": 80, "votes": None}}}}
     _stub_ratings(monkeypatch, cfg={"formula": {"missing_mdblist": "zero", "preset": "mdblist"}},
                   cache=cache)
-    respx.get(f"{PLEX_URL}/library/sections/1/all").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/all").mock(
         return_value=httpx.Response(200, json={
             "MediaContainer": {"Metadata": [
                 {"type": "movie", "title": "tagged", "Guid": [{"id": "tmdb://603"}]},
@@ -270,7 +270,7 @@ async def test_enrich_skips_when_effective_sources_empty(monkeypatch):
     # Row exists but yields no effective sources → item left unmodified.
     cache = {(603, "movie"): {"sources": {}}}
     _stub_ratings(monkeypatch, cfg={"formula": {"missing_mdblist": "zero"}}, cache=cache)
-    respx.get(f"{PLEX_URL}/library/sections/1/all").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/all").mock(
         return_value=httpx.Response(200, json={
             "MediaContainer": {"Metadata": [
                 {"type": "movie", "title": "M", "Guid": [{"id": "tmdb://603"}]},
@@ -289,7 +289,7 @@ async def test_malformed_json_falls_through_to_passthrough(monkeypatch):
     _mock_auth_gate()
     _stub_ratings(monkeypatch)
     # content-type says json but the body is invalid → parse fails → passthrough.
-    respx.get(f"{PLEX_URL}/library/sections").mock(
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(
         return_value=httpx.Response(200, content=b"not json",
                                     headers={"content-type": "application/json"}),
     )

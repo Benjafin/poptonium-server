@@ -9,11 +9,9 @@ import asyncio
 from fastapi import APIRouter
 
 from .config import (
-    MDBLIST_API_KEY,
-    OVERSEERR_API_KEY,
-    OVERSEERR_URL,
     SECTION_SCHEMA_VERSION,
     SERVICE_VERSION,
+    settings,
 )
 from .opensubtitles import opensubtitles_configured
 from .plex import plex_configured
@@ -50,12 +48,12 @@ async def capabilities():
         "section_schema_version": SECTION_SCHEMA_VERSION,
         "features": ["sections", "ratings", "popular", "overseerr", "opensubtitles", "plugins", "subtitle_prefs"],
         "sections": True,
-        "ratings": bool(MDBLIST_API_KEY),
+        "ratings": bool(settings.MDBLIST_API_KEY),
         # Per-series subtitle preference store (Plex has no per-show subtitle setting).
         "subtitle_prefs": True,
         # The Plex reverse-proxy (backend mode) is only usable if we can reach Plex.
         "plex_proxy": plex_configured(),
-        "overseerr_configured": bool(OVERSEERR_URL and OVERSEERR_API_KEY),
+        "overseerr_configured": bool(settings.OVERSEERR_URL and settings.OVERSEERR_API_KEY),
         "plex_configured": plex_configured(),
         # Online subtitle search needs both OpenSubtitles creds and Plex (to upload).
         "opensubtitles_configured": opensubtitles_configured() and plex_configured(),

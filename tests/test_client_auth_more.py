@@ -12,7 +12,7 @@ import respx
 from fastapi import Request
 
 from app import client_auth
-from app.config import PLEX_TV_USER_URL, PLEX_URL
+from app.config import PLEX_TV_USER_URL, settings
 
 
 def _fake_request(headers=None, query=""):
@@ -125,9 +125,9 @@ async def test_plex_user_identity_bad_json():
 
 def _mock_shared_map(machine_id="m123", shared=(), owner=None):
     """Mock the upstream calls that build the shared-users identity map:
-    {PLEX_URL}/identity (machineIdentifier), plex.tv /api/v2/user (owner token),
+    {settings.PLEX_URL}/identity (machineIdentifier), plex.tv /api/v2/user (owner token),
     and plex.tv shared_servers (per-user XML with server access tokens)."""
-    respx.get(f"{PLEX_URL}/identity").mock(
+    respx.get(f"{settings.PLEX_URL}/identity").mock(
         return_value=httpx.Response(200, json={"MediaContainer": {"machineIdentifier": machine_id}})
     )
     respx.get(PLEX_TV_USER_URL).mock(
@@ -179,7 +179,7 @@ async def test_resolve_caller_identity_empty_token():
 async def test_shared_map_swallows_build_exception():
     # A network error while building the map is swallowed; resolution falls back
     # to the plex.tv lookup (also failing here) and returns None rather than raising.
-    respx.get(f"{PLEX_URL}/identity").mock(side_effect=httpx.ConnectError("boom"))
+    respx.get(f"{settings.PLEX_URL}/identity").mock(side_effect=httpx.ConnectError("boom"))
     respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
     assert await client_auth.resolve_caller_identity("x") is None
 
@@ -188,7 +188,7 @@ async def test_shared_map_swallows_build_exception():
 async def test_shared_map_handles_shared_servers_error():
     # A non-200 from the shared_servers list yields no identities; an unknown token
     # then also fails the plex.tv fallback and resolves to None.
-    respx.get(f"{PLEX_URL}/identity").mock(
+    respx.get(f"{settings.PLEX_URL}/identity").mock(
         return_value=httpx.Response(200, json={"MediaContainer": {"machineIdentifier": "m"}})
     )
     respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
@@ -200,7 +200,7 @@ async def test_shared_map_handles_shared_servers_error():
 
 @respx.mock
 async def test_shared_map_skips_malformed_rows():
-    respx.get(f"{PLEX_URL}/identity").mock(
+    respx.get(f"{settings.PLEX_URL}/identity").mock(
         return_value=httpx.Response(200, json={"MediaContainer": {"machineIdentifier": "m"}})
     )
     respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
@@ -220,7 +220,7 @@ async def test_shared_map_skips_malformed_rows():
 
 @respx.mock
 async def test_shared_map_cached_after_first_build():
-    id_route = respx.get(f"{PLEX_URL}/identity").mock(
+    id_route = respx.get(f"{settings.PLEX_URL}/identity").mock(
         return_value=httpx.Response(200, json={"MediaContainer": {"machineIdentifier": "m1"}})
     )
     respx.get(PLEX_TV_USER_URL).mock(return_value=httpx.Response(401))
@@ -244,7 +244,7 @@ async def test_plex_user_can_access_missing_args():
 
 @respx.mock
 async def test_plex_user_can_access_true_on_200():
-    route = respx.get(f"{PLEX_URL}/library/metadata/123").mock(
+    route = respx.get(f"{settings.PLEX_URL}/library/metadata/123").mock(
         return_value=httpx.Response(200, json={})
     )
     assert await client_auth.plex_user_can_access("tok", "123") is True
@@ -254,19 +254,19 @@ async def test_plex_user_can_access_true_on_200():
 @respx.mock
 async def test_plex_user_can_access_accepts_metadata_path():
     # A full /library/metadata/<k> path should be reduced to the bare key.
-    respx.get(f"{PLEX_URL}/library/metadata/456").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/metadata/456").mock(return_value=httpx.Response(200, json={}))
     assert await client_auth.plex_user_can_access("tok", "/library/metadata/456") is True
 
 
 @respx.mock
 async def test_plex_user_can_access_false_on_404():
-    respx.get(f"{PLEX_URL}/library/metadata/123").mock(return_value=httpx.Response(404))
+    respx.get(f"{settings.PLEX_URL}/library/metadata/123").mock(return_value=httpx.Response(404))
     assert await client_auth.plex_user_can_access("tok", "123") is False
 
 
 @respx.mock
 async def test_plex_user_can_access_network_error():
-    respx.get(f"{PLEX_URL}/library/metadata/123").mock(side_effect=httpx.ConnectError("boom"))
+    respx.get(f"{settings.PLEX_URL}/library/metadata/123").mock(side_effect=httpx.ConnectError("boom"))
     assert await client_auth.plex_user_can_access("tok", "123") is False
 
 
@@ -314,7 +314,7 @@ async def test_require_plex_user_401_when_no_token(monkeypatch):
 @respx.mock
 async def test_require_plex_user_401_when_token_rejected(monkeypatch):
     monkeypatch.setattr(client_auth, "plex_configured", lambda: True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
     try:
         await client_auth.require_plex_user(_fake_request(headers={"X-Plex-Token": "bad"}))
         assert False
@@ -325,7 +325,7 @@ async def test_require_plex_user_401_when_token_rejected(monkeypatch):
 @respx.mock
 async def test_require_plex_user_passes_for_valid(monkeypatch):
     monkeypatch.setattr(client_auth, "plex_configured", lambda: True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     await client_auth.require_plex_user(_fake_request(headers={"X-Plex-Token": "good"}))
 
 
@@ -334,7 +334,7 @@ async def test_require_plex_user_passes_for_valid(monkeypatch):
 @respx.mock
 async def test_require_plex_user_token_returns_token(monkeypatch):
     monkeypatch.setattr(client_auth, "plex_configured", lambda: True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     tok = await client_auth.require_plex_user_token(_fake_request(headers={"X-Plex-Token": "good"}))
     assert tok == "good"
 
@@ -342,7 +342,7 @@ async def test_require_plex_user_token_returns_token(monkeypatch):
 @respx.mock
 async def test_require_plex_user_token_raises_on_bad(monkeypatch):
     monkeypatch.setattr(client_auth, "plex_configured", lambda: True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
     try:
         await client_auth.require_plex_user_token(_fake_request(headers={"X-Plex-Token": "bad"}))
         assert False
@@ -402,7 +402,7 @@ async def test_require_admin_or_plex_user_falls_back_to_plex(monkeypatch):
 
     monkeypatch.setattr("app.auth.has_admin_session", _has)
     monkeypatch.setattr(client_auth, "plex_configured", lambda: True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     await client_auth.require_admin_or_plex_user(_fake_request(headers={"X-Plex-Token": "good"}))
 
 
@@ -413,7 +413,7 @@ async def test_require_admin_or_plex_user_rejects_when_neither(monkeypatch):
 
     monkeypatch.setattr("app.auth.has_admin_session", _has)
     monkeypatch.setattr(client_auth, "plex_configured", lambda: True)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
     try:
         await client_auth.require_admin_or_plex_user(_fake_request(headers={"X-Plex-Token": "bad"}))
         assert False
@@ -425,7 +425,7 @@ async def test_require_admin_or_plex_user_rejects_when_neither(monkeypatch):
 
 @respx.mock
 async def test_validate_plex_token_caches_on_success():
-    route = respx.get(f"{PLEX_URL}/library/sections").mock(
+    route = respx.get(f"{settings.PLEX_URL}/library/sections").mock(
         return_value=httpx.Response(200, json={})
     )
     assert await client_auth.validate_plex_token("tok") is True
@@ -435,7 +435,7 @@ async def test_validate_plex_token_caches_on_success():
 
 @respx.mock
 async def test_validate_plex_token_network_error():
-    respx.get(f"{PLEX_URL}/library/sections").mock(side_effect=httpx.ConnectError("boom"))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(side_effect=httpx.ConnectError("boom"))
     assert await client_auth.validate_plex_token("tok") is False
 
 
@@ -445,7 +445,7 @@ async def test_validate_plex_token_network_error():
 async def test_validate_plex_token_evicts_when_cache_full():
     # Over-fill the token cache so the next success trips the clear() branch.
     client_auth._token_cache.update({f"k{i}": 1e18 for i in range(client_auth._CACHE_MAX + 1)})
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
     assert await client_auth.validate_plex_token("fresh") is True
     # Cache was cleared, then the fresh token cached -> exactly one entry.
     assert len(client_auth._token_cache) == 1

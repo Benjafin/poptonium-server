@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
 from .client_auth import require_plex_user
-from .config import PLEX_URL
+from .config import settings
 from .http_client import http_client
 from .plex import (
     DROP_REQ_HEADERS,
@@ -74,7 +74,7 @@ async def plex_proxy(path: str, request: Request):
 
     try:
         up = await http_client().request(
-            request.method, f"{PLEX_URL}/{path}",
+            request.method, f"{settings.PLEX_URL}/{path}",
             params=params, headers=fwd_headers, content=body, timeout=30,
         )
     except httpx.HTTPError as e:

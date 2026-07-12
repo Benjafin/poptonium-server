@@ -19,7 +19,7 @@ from httpx import ASGITransport
 
 import app.db as _db
 from app import opensubtitles
-from app.config import OPENSUBTITLES_API_BASE, PLEX_URL
+from app.config import OPENSUBTITLES_API_BASE, settings
 
 
 # --- helpers -----------------------------------------------------------------
@@ -27,9 +27,9 @@ from app.config import OPENSUBTITLES_API_BASE, PLEX_URL
 def _configure(monkeypatch):
     """Make ``opensubtitles_configured()`` return True (username/password are
     blank by default in conftest; the API key is set in env but re-assert it)."""
-    monkeypatch.setattr(opensubtitles, "OPENSUBTITLES_API_KEY", "os-key")
-    monkeypatch.setattr(opensubtitles, "OPENSUBTITLES_USERNAME", "user")
-    monkeypatch.setattr(opensubtitles, "OPENSUBTITLES_PASSWORD", "pass")
+    monkeypatch.setitem(settings._values, "OPENSUBTITLES_API_KEY", "os-key")
+    monkeypatch.setitem(settings._values, "OPENSUBTITLES_USERNAME", "user")
+    monkeypatch.setitem(settings._values, "OPENSUBTITLES_PASSWORD", "pass")
 
 
 def _isolate_db(tmp_path, monkeypatch):
@@ -53,7 +53,7 @@ def _app():
 
 def _mock_plex_gate():
     """Auth gate for require_plex_user: /library/sections -> 200."""
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
 
 
 # --- opensubtitles_configured / _clean_imdb / _os_headers --------------------
@@ -64,9 +64,9 @@ def test_configured_true(monkeypatch):
 
 
 def test_configured_false_when_key_blank(monkeypatch):
-    monkeypatch.setattr(opensubtitles, "OPENSUBTITLES_API_KEY", "")
-    monkeypatch.setattr(opensubtitles, "OPENSUBTITLES_USERNAME", "user")
-    monkeypatch.setattr(opensubtitles, "OPENSUBTITLES_PASSWORD", "pass")
+    monkeypatch.setitem(settings._values, "OPENSUBTITLES_API_KEY", "")
+    monkeypatch.setitem(settings._values, "OPENSUBTITLES_USERNAME", "user")
+    monkeypatch.setitem(settings._values, "OPENSUBTITLES_PASSWORD", "pass")
     assert opensubtitles.opensubtitles_configured() is False
 
 
@@ -164,7 +164,7 @@ async def test_os_token_corrupt_cache_triggers_login(tmp_path, monkeypatch):
 
 async def test_os_token_returns_none_when_not_configured(tmp_path, monkeypatch):
     _isolate_db(tmp_path, monkeypatch)
-    monkeypatch.setattr(opensubtitles, "OPENSUBTITLES_API_KEY", "")
+    monkeypatch.setitem(settings._values, "OPENSUBTITLES_API_KEY", "")
     assert await opensubtitles._os_token() is None
 
 
@@ -224,7 +224,7 @@ async def _get_search(params, headers=None):
 async def test_search_not_configured_503(tmp_path, monkeypatch):
     _isolate_db(tmp_path, monkeypatch)
     _mock_plex_gate()
-    monkeypatch.setattr(opensubtitles, "OPENSUBTITLES_API_KEY", "")
+    monkeypatch.setitem(settings._values, "OPENSUBTITLES_API_KEY", "")
     resp = await _get_search({"query": "matrix"})
     assert resp.status_code == 503
 
@@ -233,7 +233,7 @@ async def test_search_not_configured_503(tmp_path, monkeypatch):
 async def test_search_requires_plex_user(tmp_path, monkeypatch):
     _isolate_db(tmp_path, monkeypatch)
     _configure(monkeypatch)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
     resp = await _get_search({"query": "matrix"}, headers={"X-Plex-Token": "bad"})
     assert resp.status_code == 401
 
@@ -403,7 +403,7 @@ async def _post_download(payload, headers=None):
 
 def _mock_item_access(ok=True):
     """plex_user_can_access -> GET /library/metadata/{rk}."""
-    respx.get(url__regex=rf"{PLEX_URL}/library/metadata/.*").mock(
+    respx.get(url__regex=rf"{settings.PLEX_URL}/library/metadata/.*").mock(
         return_value=httpx.Response(200 if ok else 403, json={})
     )
 
@@ -418,7 +418,7 @@ def _valid_payload(**over):
 async def test_download_not_configured_503(tmp_path, monkeypatch):
     _isolate_db(tmp_path, monkeypatch)
     _mock_plex_gate()
-    monkeypatch.setattr(opensubtitles, "OPENSUBTITLES_API_KEY", "")
+    monkeypatch.setitem(settings._values, "OPENSUBTITLES_API_KEY", "")
     resp = await _post_download(_valid_payload())
     assert resp.status_code == 503
 
@@ -437,7 +437,7 @@ async def test_download_plex_not_configured_503(tmp_path, monkeypatch):
 async def test_download_requires_plex_user(tmp_path, monkeypatch):
     _isolate_db(tmp_path, monkeypatch)
     _configure(monkeypatch)
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
     resp = await _post_download(_valid_payload(), headers={"X-Plex-Token": "bad"})
     assert resp.status_code == 401
 
@@ -481,7 +481,7 @@ async def test_download_happy_path(tmp_path, monkeypatch):
     fetch = respx.get("https://dl.opensubtitles.com/tmp/sub.srt").mock(
         return_value=httpx.Response(200, content=b"1\n00:00:01 --> 00:00:02\nHi\n")
     )
-    upload = respx.post(f"{PLEX_URL}/library/metadata/555/subtitles").mock(
+    upload = respx.post(f"{settings.PLEX_URL}/library/metadata/555/subtitles").mock(
         return_value=httpx.Response(201, text="OK")
     )
     resp = await _post_download(_valid_payload())
@@ -597,7 +597,7 @@ async def test_download_plex_upload_fails_502(tmp_path, monkeypatch):
         return_value=httpx.Response(200, json={"link": "https://dl.test/s.srt", "file_name": "s.srt"})
     )
     respx.get("https://dl.test/s.srt").mock(return_value=httpx.Response(200, content=b"data"))
-    respx.post(f"{PLEX_URL}/library/metadata/555/subtitles").mock(
+    respx.post(f"{settings.PLEX_URL}/library/metadata/555/subtitles").mock(
         return_value=httpx.Response(500, text="plex boom")
     )
     resp = await _post_download(_valid_payload())
@@ -617,7 +617,7 @@ async def test_download_defaults_sub_format_and_language(tmp_path, monkeypatch):
         return_value=httpx.Response(200, json={"link": "https://dl.test/s.srt"})
     )
     respx.get("https://dl.test/s.srt").mock(return_value=httpx.Response(200, content=b"data"))
-    upload = respx.post(f"{PLEX_URL}/library/metadata/555/subtitles").mock(
+    upload = respx.post(f"{settings.PLEX_URL}/library/metadata/555/subtitles").mock(
         return_value=httpx.Response(200, text="OK")
     )
     resp = await _post_download({"file_id": 111, "rating_key": "555",

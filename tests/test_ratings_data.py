@@ -22,7 +22,7 @@ from httpx import ASGITransport
 import app.db as _db
 import app.ratings as ratings
 import app.scheduler as scheduler_mod
-from app.config import MDBLIST_BASE
+from app.config import MDBLIST_BASE, settings
 
 
 def _use_temp_db(tmp_path, monkeypatch):
@@ -30,7 +30,7 @@ def _use_temp_db(tmp_path, monkeypatch):
 
 
 def _enable_key(monkeypatch):
-    monkeypatch.setattr(ratings, "MDBLIST_API_KEY", "testkey")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "testkey")
 
 
 def _no_sleep(monkeypatch):
@@ -48,7 +48,7 @@ def _app():
 # ---- mdblist_bulk -----------------------------------------------------------
 
 async def test_mdblist_bulk_no_key_returns_empty(monkeypatch):
-    monkeypatch.setattr(ratings, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
     assert await ratings.mdblist_bulk("movie", [1, 2, 3]) == {}
 
 
@@ -422,7 +422,7 @@ async def test_get_ratings_sync_config_bad_json(tmp_path, monkeypatch):
 # ---- refresh_library_ratings ------------------------------------------------
 
 async def test_refresh_library_ratings_no_key(monkeypatch):
-    monkeypatch.setattr(ratings, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
     # Should early-return without touching Plex.
     called = {"plex": False}
 
@@ -518,7 +518,7 @@ def test_schedule_library_sync_disabled_removes_job(monkeypatch):
 
 
 def test_schedule_library_sync_no_job_when_key_blank(monkeypatch):
-    monkeypatch.setattr(ratings, "MDBLIST_API_KEY", "")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "")
     sched = AsyncIOScheduler()
     monkeypatch.setattr(scheduler_mod, "scheduler", sched)
     ratings.schedule_library_sync({"enabled": True, "hour": 3})

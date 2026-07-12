@@ -12,7 +12,7 @@ import httpx
 from fastapi import APIRouter, Depends, Query
 
 from .auth import require_admin
-from .config import MDBLIST_API_KEY, log
+from .config import log, settings
 from .db import get_db, meta_set
 from .ratings import (
     compute_rating,
@@ -37,7 +37,7 @@ async def fetch_mdblist_official_list(slug_media: str) -> list[dict]:
         resp = await client.get(
             url,
             params={
-                "apikey": MDBLIST_API_KEY,
+                "apikey": settings.MDBLIST_API_KEY,
                 "append_to_response": "poster,description,ratings",
             },
         )
@@ -55,7 +55,7 @@ async def fetch_mdblist_official_list(slug_media: str) -> list[dict]:
 async def refresh_popular_items():
     """Rebuild the Discover feed from mdblist's official popular list and
     bulk-cache the ratings for those titles (≈1-2 mdblist calls total)."""
-    if not MDBLIST_API_KEY:
+    if not settings.MDBLIST_API_KEY:
         log.warning("MDBLIST_API_KEY not set, skipping popular items fetch")
         return
 

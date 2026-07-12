@@ -66,11 +66,17 @@ Open the **Apps** tab, search for **Poptonium**, and click Install. Set `PLEX_UR
 
 ### First run
 
-Poptonium checks Plex on boot. If `PLEX_URL` / `PLEX_TOKEN` are missing or Plex is unreachable, the
-admin UI shows a **Connect Plex first** screen and stays blocked until the connection works (set the
-variables and restart, then press Retry). Once Plex is reachable, `/admin` prompts you to create a
-single admin account that guards the dashboard and every config-changing endpoint; the client read
-endpoints stay open.
+Open `/admin`, create a single admin account (it guards the dashboard and every config-changing
+endpoint; the client read endpoints stay open), and a **setup wizard** walks you through connecting
+Plex (required) plus MDbList, Overseerr and OpenSubtitles (optional) — each with a **Test connection**
+button. Nothing needs a restart. Once Plex tests green, a second wizard offers to seed a set of
+**starter sections** adapted to your own libraries (or start from a blank board). You can revisit and
+change any integration later under **Integrations**.
+
+Configuration is stored in `config.json` on the data volume (`/data/config.json`) and edited entirely
+in the UI. Environment variables (below) are only read **once**, to seed that file on first boot, so
+an existing env-configured deployment keeps working; after that the file is the source of truth and
+env changes are ignored.
 
 ## Reverse proxy
 
@@ -148,8 +154,10 @@ gate `/poptonium/admin` to the LAN by whatever access-control mechanism your pro
 
 ## Configuration
 
-Plex is set with environment variables; everything else is either an env var or, where noted,
-configured in the admin UI. Secrets are masked and read-only in the web UI.
+All integration credentials are configured in the admin UI (setup wizard or **Integrations** tab)
+and stored in `/data/config.json`; secrets are masked in the UI. The environment variables below are
+optional and only **seed** that file on first boot — handy for automated/Unraid deploys — after which
+the file wins and env changes are ignored.
 
 | Var | Required | Purpose |
 |-----|----------|---------|

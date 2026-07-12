@@ -17,12 +17,11 @@ from urllib.parse import urlencode
 import httpx
 
 from .config import (
-    MDBLIST_API_KEY,
-    PLEX_TOKEN,
     PLEX_TYPE,
     degrade_config,
     log,
     section_min_version,
+    settings,
 )
 from .plex import (
     map_plex_item,
@@ -55,7 +54,7 @@ async def map_with_ratings(items: list[dict], rcfg: Optional[dict] = None) -> li
     pairs = [p for p in (_pair(m) for m in items) if p]
     cache = await ratings_for_tmdb(pairs)
 
-    if MDBLIST_API_KEY:
+    if settings.MDBLIST_API_KEY:
         miss: dict[str, list[int]] = {}
         for tid, mt in pairs:
             if (tid, mt) not in cache:
@@ -636,8 +635,8 @@ async def _plextv_avatars() -> tuple[dict, dict]:
         return _avatar_cache["by_id"], _avatar_cache["by_name"]
     by_id: dict[str, str] = {}
     by_name: dict[str, str] = {}
-    if PLEX_TOKEN:
-        headers = {"X-Plex-Token": PLEX_TOKEN, "Accept": "application/json",
+    if settings.PLEX_TOKEN:
+        headers = {"X-Plex-Token": settings.PLEX_TOKEN, "Accept": "application/json",
                    "X-Plex-Client-Identifier": "poptonium-backend"}
         try:
             async with httpx.AsyncClient(timeout=15, follow_redirects=True) as c:

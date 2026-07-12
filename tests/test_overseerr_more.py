@@ -8,7 +8,7 @@ _overseerr_user_maps pagination/caching/failure-fallback and _import_overseerr_u
 helpers.
 
 Endpoints are mounted on a fresh FastAPI() and driven via ASGITransport; the Plex
-auth gate (require_plex_user -> {PLEX_URL}/library/sections) is mocked to 200 so we
+auth gate (require_plex_user -> {settings.PLEX_URL}/library/sections) is mocked to 200 so we
 reach the handler, and inner httpx calls to Overseerr are mocked with respx.
 """
 
@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 
 from app import overseerr
-from app.config import OVERSEERR_URL, PLEX_URL
+from app.config import settings
 
 
 def _app():
@@ -33,7 +33,7 @@ def _client():
 
 def _pass_auth():
     """Make the require_plex_user gate accept the caller's token."""
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
 
 
 _AUTH_HDR = {"X-Plex-Token": "caller-tok"}
@@ -54,7 +54,7 @@ async def test_user_maps_paginates_across_pages():
         "pageInfo": {"results": 150},
         "results": [{"id": 3, "plexId": 300, "email": None}],
     }
-    route = respx.get(f"{OVERSEERR_URL}/api/v1/user").mock(
+    route = respx.get(f"{settings.OVERSEERR_URL}/api/v1/user").mock(
         side_effect=[httpx.Response(200, json=page1), httpx.Response(200, json=page2)]
     )
     by_plex_id, by_email = await overseerr._overseerr_user_maps()
@@ -73,7 +73,7 @@ async def test_user_maps_skips_bad_ids_and_missing():
         {"id": 5, "plexId": "not-int", "email": "e@x.com"},  # bad plexId -> plex map skips, email kept
         {"id": 6},  # no plexId, no email
     ]
-    respx.get(f"{OVERSEERR_URL}/api/v1/user").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/user").mock(
         return_value=httpx.Response(200, json={"pageInfo": {"results": len(users)}, "results": users})
     )
     by_plex_id, by_email = await overseerr._overseerr_user_maps()
@@ -83,7 +83,7 @@ async def test_user_maps_skips_bad_ids_and_missing():
 
 @respx.mock
 async def test_user_maps_caches_within_ttl():
-    route = respx.get(f"{OVERSEERR_URL}/api/v1/user").mock(
+    route = respx.get(f"{settings.OVERSEERR_URL}/api/v1/user").mock(
         return_value=httpx.Response(200, json={"pageInfo": {"results": 1}, "results": [{"id": 1, "plexId": 9}]})
     )
     await overseerr._overseerr_user_maps()
@@ -94,7 +94,7 @@ async def test_user_maps_caches_within_ttl():
 @respx.mock
 async def test_user_maps_failure_falls_back_to_prior_cache():
     # Prime the cache with a good response.
-    good = respx.get(f"{OVERSEERR_URL}/api/v1/user").mock(
+    good = respx.get(f"{settings.OVERSEERR_URL}/api/v1/user").mock(
         return_value=httpx.Response(200, json={"pageInfo": {"results": 1}, "results": [{"id": 1, "plexId": 9}]})
     )
     by_plex_id, _ = await overseerr._overseerr_user_maps()
@@ -110,7 +110,7 @@ async def test_user_maps_failure_falls_back_to_prior_cache():
 @respx.mock
 async def test_user_maps_network_error_returns_prior_cache():
     overseerr._user_cache["expiry"] = 0.0
-    respx.get(f"{OVERSEERR_URL}/api/v1/user").mock(side_effect=httpx.ConnectError("boom"))
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/user").mock(side_effect=httpx.ConnectError("boom"))
     by_plex_id, by_email = await overseerr._overseerr_user_maps()
     # Nothing prior cached -> empty maps, no raise.
     assert by_plex_id == {}
@@ -121,7 +121,7 @@ async def test_user_maps_network_error_returns_prior_cache():
 
 @respx.mock
 async def test_import_user_returns_new_id():
-    respx.post(f"{OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
+    respx.post(f"{settings.OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
         return_value=httpx.Response(201, json=[{"id": 55, "plexId": 4242}])
     )
     assert await overseerr._import_overseerr_user(4242) == 55
@@ -129,7 +129,7 @@ async def test_import_user_returns_new_id():
 
 @respx.mock
 async def test_import_user_no_match_returns_none():
-    respx.post(f"{OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
+    respx.post(f"{settings.OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
         return_value=httpx.Response(200, json=[{"id": 55, "plexId": 9999}])
     )
     assert await overseerr._import_overseerr_user(4242) is None
@@ -137,7 +137,7 @@ async def test_import_user_no_match_returns_none():
 
 @respx.mock
 async def test_import_user_error_status_returns_none():
-    respx.post(f"{OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
+    respx.post(f"{settings.OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
         return_value=httpx.Response(500, text="oops")
     )
     assert await overseerr._import_overseerr_user(4242) is None
@@ -145,7 +145,7 @@ async def test_import_user_error_status_returns_none():
 
 @respx.mock
 async def test_import_user_network_error_returns_none():
-    respx.post(f"{OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
+    respx.post(f"{settings.OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
         side_effect=httpx.ConnectError("boom")
     )
     assert await overseerr._import_overseerr_user(4242) is None
@@ -153,7 +153,7 @@ async def test_import_user_network_error_returns_none():
 
 @respx.mock
 async def test_import_user_non_list_response_returns_none():
-    respx.post(f"{OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
+    respx.post(f"{settings.OVERSEERR_URL}/api/v1/user/import-from-plex").mock(
         return_value=httpx.Response(201, json={"not": "a list"})
     )
     assert await overseerr._import_overseerr_user(4242) is None
@@ -179,7 +179,7 @@ async def test_requested_paginates_and_filters_by_status():
             {"tmdbId": 0, "mediaType": "tv", "status": 5},        # falsy tmdbId -> dropped
         ],
     }
-    respx.get(f"{OVERSEERR_URL}/api/v1/media").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/media").mock(
         side_effect=[httpx.Response(200, json=page1), httpx.Response(200, json=page2)]
     )
     async with _client() as ac:
@@ -193,7 +193,7 @@ async def test_requested_paginates_and_filters_by_status():
 @respx.mock
 async def test_requested_stops_on_empty_results():
     _pass_auth()
-    respx.get(f"{OVERSEERR_URL}/api/v1/media").mock(
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/media").mock(
         return_value=httpx.Response(200, json={"pageInfo": {"results": 100}, "results": []})
     )
     async with _client() as ac:
@@ -204,7 +204,7 @@ async def test_requested_stops_on_empty_results():
 @respx.mock
 async def test_requested_handles_media_list_error():
     _pass_auth()
-    respx.get(f"{OVERSEERR_URL}/api/v1/media").mock(return_value=httpx.Response(500))
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/media").mock(return_value=httpx.Response(500))
     async with _client() as ac:
         resp = await ac.get("/overseerr/requested", headers=_AUTH_HDR)
     assert resp.json() == {"movie": [], "tv": []}
@@ -212,11 +212,11 @@ async def test_requested_handles_media_list_error():
 
 async def test_requested_empty_when_not_configured(monkeypatch):
     _pass_auth_needed = None  # noqa: F841 (documentation only)
-    monkeypatch.setattr(overseerr, "OVERSEERR_URL", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "")
 
     @respx.mock
     async def _run():
-        respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+        respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
         async with _client() as ac:
             return await ac.get("/overseerr/requested", headers=_AUTH_HDR)
 
@@ -226,7 +226,7 @@ async def test_requested_empty_when_not_configured(monkeypatch):
 
 @respx.mock
 async def test_requested_rejects_bad_token():
-    respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
+    respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(401))
     async with _client() as ac:
         resp = await ac.get("/overseerr/requested", headers={"X-Plex-Token": "bad"})
     assert resp.status_code == 401
@@ -254,7 +254,7 @@ async def test_search_maps_results():
             {"id": 7, "mediaType": "movie", "title": "NoDate", "releaseDate": ""},  # short date -> year None
         ]
     }
-    respx.get(url__startswith=f"{OVERSEERR_URL}/api/v1/search").mock(
+    respx.get(url__startswith=f"{settings.OVERSEERR_URL}/api/v1/search").mock(
         return_value=httpx.Response(200, json=search_resp)
     )
     async with _client() as ac:
@@ -280,7 +280,7 @@ async def test_search_maps_results():
 @respx.mock
 async def test_search_upstream_error_propagates_status():
     _pass_auth()
-    respx.get(url__startswith=f"{OVERSEERR_URL}/api/v1/search").mock(
+    respx.get(url__startswith=f"{settings.OVERSEERR_URL}/api/v1/search").mock(
         return_value=httpx.Response(502, text="bad gateway")
     )
     async with _client() as ac:
@@ -289,11 +289,11 @@ async def test_search_upstream_error_propagates_status():
 
 
 async def test_search_503_when_not_configured(monkeypatch):
-    monkeypatch.setattr(overseerr, "OVERSEERR_URL", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "")
 
     @respx.mock
     async def _run():
-        respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+        respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
         async with _client() as ac:
             return await ac.get("/overseerr/search", params={"query": "x"}, headers=_AUTH_HDR)
 
@@ -318,7 +318,7 @@ async def test_details_movie():
         "credits": {"cast": [{"name": "Keanu", "character": "Neo", "profilePath": "/k.jpg"}]},
         "mediaInfo": {"status": 5},
     }
-    respx.get(f"{OVERSEERR_URL}/api/v1/movie/603").mock(return_value=httpx.Response(200, json=movie))
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/movie/603").mock(return_value=httpx.Response(200, json=movie))
     async with _client() as ac:
         resp = await ac.get(
             "/overseerr/details", params={"tmdb_id": 603, "media_type": "movie"}, headers=_AUTH_HDR
@@ -354,7 +354,7 @@ async def test_details_show_with_seasons():
         ],
         "mediaInfo": {"seasons": [{"seasonNumber": 1, "status": 5}]},
     }
-    respx.get(f"{OVERSEERR_URL}/api/v1/tv/1399").mock(return_value=httpx.Response(200, json=show))
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/tv/1399").mock(return_value=httpx.Response(200, json=show))
     async with _client() as ac:
         resp = await ac.get(
             "/overseerr/details", params={"tmdb_id": 1399, "media_type": "show"}, headers=_AUTH_HDR
@@ -376,7 +376,7 @@ async def test_details_show_with_seasons():
 @respx.mock
 async def test_details_upstream_error_propagates():
     _pass_auth()
-    respx.get(f"{OVERSEERR_URL}/api/v1/movie/1").mock(return_value=httpx.Response(404))
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/movie/1").mock(return_value=httpx.Response(404))
     async with _client() as ac:
         resp = await ac.get(
             "/overseerr/details", params={"tmdb_id": 1, "media_type": "movie"}, headers=_AUTH_HDR
@@ -387,7 +387,7 @@ async def test_details_upstream_error_propagates():
 @respx.mock
 async def test_details_network_error_500():
     _pass_auth()
-    respx.get(f"{OVERSEERR_URL}/api/v1/movie/1").mock(side_effect=httpx.ConnectError("boom"))
+    respx.get(f"{settings.OVERSEERR_URL}/api/v1/movie/1").mock(side_effect=httpx.ConnectError("boom"))
     async with _client() as ac:
         resp = await ac.get(
             "/overseerr/details", params={"tmdb_id": 1, "media_type": "movie"}, headers=_AUTH_HDR
@@ -396,11 +396,11 @@ async def test_details_network_error_500():
 
 
 async def test_details_503_when_not_configured(monkeypatch):
-    monkeypatch.setattr(overseerr, "OVERSEERR_URL", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "")
 
     @respx.mock
     async def _run():
-        respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+        respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
         async with _client() as ac:
             return await ac.get(
                 "/overseerr/details", params={"tmdb_id": 1, "media_type": "movie"}, headers=_AUTH_HDR
@@ -413,7 +413,7 @@ async def test_details_503_when_not_configured(monkeypatch):
 async def test_details_rejects_bad_media_type():
     @respx.mock
     async def _run():
-        respx.get(f"{PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
+        respx.get(f"{settings.PLEX_URL}/library/sections").mock(return_value=httpx.Response(200, json={}))
         async with _client() as ac:
             return await ac.get(
                 "/overseerr/details", params={"tmdb_id": 1, "media_type": "bogus"}, headers=_AUTH_HDR
@@ -433,7 +433,7 @@ async def test_status_configured():
 
 
 async def test_status_not_configured(monkeypatch):
-    monkeypatch.setattr(overseerr, "OVERSEERR_URL", "")
+    monkeypatch.setitem(settings._values, "OVERSEERR_URL", "")
     async with _client() as ac:
         resp = await ac.get("/overseerr/status")
     assert resp.json() == {"configured": False}

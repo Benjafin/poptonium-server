@@ -20,7 +20,7 @@ import respx
 
 import app.db as _db
 from app import section_resolve as sr
-from app.config import PLEX_URL
+from app.config import settings
 
 
 # --------------------------------------------------------------------------- #
@@ -115,7 +115,7 @@ async def test_map_with_ratings_attaches_cached_rating(isolate_db, monkeypatch):
 async def test_map_with_ratings_bulk_enriches_cache_misses(isolate_db, monkeypatch):
     # With an API key set, a cache miss is bulk-enriched on the fly, then the
     # cache is re-read so the section works before the nightly sync has run.
-    monkeypatch.setattr(sr, "MDBLIST_API_KEY", "key")
+    monkeypatch.setitem(settings._values, "MDBLIST_API_KEY", "key")
 
     async def fake_fetch(mt, ids):
         # Simulate the fetch populating the cache for the missing title.

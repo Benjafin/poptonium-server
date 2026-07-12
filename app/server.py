@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, FastAPI
 
 from . import scheduler as scheduler_mod
 from .auth import require_admin
-from .config import MDBLIST_API_KEY, OVERSEERR_API_KEY, OVERSEERR_URL, PLEX_URL, log
+from .config import log, settings
 from .db import get_db
 from .http_client import aclose_http_client, http_client
 from .plex import plex_configured, plex_reachable
@@ -86,22 +86,22 @@ async def startup():
         log.warning("Plex not configured: set PLEX_URL and PLEX_TOKEN. The admin "
                     "UI stays blocked until Plex is reachable.")
     elif await plex_reachable():
-        log.info("Plex connected: %s", PLEX_URL)
+        log.info("Plex connected: %s", settings.PLEX_URL)
     else:
         log.warning("Plex configured but unreachable at %s: check PLEX_URL/PLEX_TOKEN. "
-                    "The admin UI stays blocked until Plex is reachable.", PLEX_URL)
+                    "The admin UI stays blocked until Plex is reachable.", settings.PLEX_URL)
 
     # Check Overseerr connectivity
-    if OVERSEERR_URL and OVERSEERR_API_KEY:
+    if settings.OVERSEERR_URL and settings.OVERSEERR_API_KEY:
         try:
             async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
                 resp = await client.get(
-                    f"{OVERSEERR_URL}/api/v1/status",
-                    headers={"X-Api-Key": OVERSEERR_API_KEY},
+                    f"{settings.OVERSEERR_URL}/api/v1/status",
+                    headers={"X-Api-Key": settings.OVERSEERR_API_KEY},
                 )
                 if resp.status_code == 200:
                     data = resp.json()
-                    log.info("Overseerr connected: %s (v%s)", OVERSEERR_URL, data.get("version", "?"))
+                    log.info("Overseerr connected: %s (v%s)", settings.OVERSEERR_URL, data.get("version", "?"))
                 else:
                     log.warning("Overseerr returned HTTP %s: %s", resp.status_code, resp.text[:200])
         except Exception as e:
@@ -110,7 +110,7 @@ async def startup():
         log.info("Overseerr not configured (OVERSEERR_URL or OVERSEERR_API_KEY missing)")
 
     # Run initial fetches
-    if MDBLIST_API_KEY:
+    if settings.MDBLIST_API_KEY:
         asyncio.create_task(refresh_popular_items())
         sync_cfg = await get_ratings_sync_config()
         if sync_cfg.get("enabled") and plex_configured():
