@@ -4,18 +4,17 @@
 
 <h1 align="center">Poptonium Server</h1>
 
-Companion backend for the Poptonium Plex client. A single small container that provides:
+Companion backend for the Poptonium Plex client. A single small container that adds:
 
-- **Ratings cache** from [mdblist](https://mdblist.com) (IMDb / Rotten Tomatoes / TMDB / Metacritic / MDbList) for fast library sorting.
-- **Discover "popular" feed** built nightly from mdblist.
-- **Custom Library sections** (rows and heroes) that drive the app's Library page.
-- **Overseerr proxy** for in-app search and requests.
-- **OpenSubtitles** search and download into Plex.
-- **Web admin UI** at `/admin` for caches, scheduled jobs, config, and sections.
+- **Ratings** from [mdblist](https://mdblist.com) (IMDb / Rotten Tomatoes / TMDB / Metacritic / MDbList) for richer library browsing and sorting.
+- **A Discover "popular" feed** refreshed nightly.
+- **Custom Library sections** (rows and heroes) that shape the app's Library page.
+- **In-app search and requests** through [Overseerr](https://overseerr.dev).
+- **Subtitle search and download** into Plex through [OpenSubtitles](https://www.opensubtitles.com).
+- **A web admin UI** at `/admin` to set everything up and manage it.
 
-**Plex is required.** mdblist, Overseerr and OpenSubtitles are optional: leave their variables
-blank to disable that feature, the rest keeps working. With no mdblist key the service runs fine,
-it just serves no ratings and an empty popular feed.
+**Plex is required.** mdblist, Overseerr and OpenSubtitles are optional — leave them
+unconfigured to disable that feature; the rest keeps working.
 
 ## The apps
 
@@ -23,17 +22,15 @@ Poptonium is a Plex client for [iOS](https://apps.apple.com/nl/app/poptonium-for
 and [Android](https://play.google.com/store/apps/details?id=games.benja.poptonium). This repo is the
 optional companion backend they connect to.
 
-The clients are built with extensive casting support: **Chromecast / Google Cast**
-integration with great remote control and the right codec profiles.
+The clients ship with extensive casting support: **Chromecast / Google Cast**
+integration with proper remote control and the right codec profiles.
 
 ## Install
 
-The app listens on container port **8085** and persists everything (the SQLite cache and your
-custom sections) under `/data`. The database is always `/data/poptonium.db`, so just bind `/data`.
+The app listens on container port **8085** and stores its data under `/data`, so bind that path.
 
-> **Keep the host port at 8085.** When the app can't reach the backend through a reverse proxy
-> (same LAN, no proxy configured) it falls back to the Plex host on a hardcoded port 8085. Changing
-> the host port breaks that direct-discovery path.
+> **Keep the host port at 8085.** On the same LAN with no reverse proxy, the client reaches the
+> backend directly on port 8085. Changing the host port breaks that direct-discovery path.
 
 ### Docker Compose
 
@@ -66,17 +63,12 @@ Open the **Apps** tab, search for **Poptonium**, and click Install. Set `PLEX_UR
 
 ### First run
 
-Open `/admin`, create a single admin account (it guards the dashboard and every config-changing
-endpoint; the client read endpoints stay open), and a **setup wizard** walks you through connecting
-Plex (required) plus MDbList, Overseerr and OpenSubtitles (optional) — each with a **Test connection**
-button. Nothing needs a restart. Once Plex tests green, a second wizard offers to seed a set of
-**starter sections** adapted to your own libraries (or start from a blank board). You can revisit and
-change any integration later under **Integrations**.
-
-Configuration is stored in `config.json` on the data volume (`/data/config.json`) and edited entirely
-in the UI. Environment variables (below) are only read **once**, to seed that file on first boot, so
-an existing env-configured deployment keeps working; after that the file is the source of truth and
-env changes are ignored.
+Open `/admin` and create a single admin account — it guards the dashboard and every setting. A
+**setup wizard** then walks you through connecting Plex (required) plus MDbList, Overseerr and
+OpenSubtitles (optional), each with a **Test connection** button. Nothing needs a restart. Once Plex
+tests green, a second wizard offers to seed a set of **starter sections** adapted to your own
+libraries, or you can start from a blank board. You can revisit and change any integration later
+under **Integrations**.
 
 ## Reverse proxy
 
@@ -84,15 +76,13 @@ This step is recommended but optional. On the same LAN with no proxy, the app re
 directly at `http://<plex-host>:8085` (this is why the port must stay 8085). A reverse proxy is what
 makes the backend reachable from outside your LAN.
 
-The app discovers the backend from the **Plex server connection**: it probes
-`<your-plex-url>/poptonium/capabilities`. So the goal is simply to route the path prefix
-`/poptonium/` on your existing Plex domain to this container on port 8085. No extra domain or DNS
-record is needed.
+The app discovers the backend from the **Plex server connection**, so the only goal is to route the
+path prefix `/poptonium/` on your existing Plex domain to this container on port 8085. No extra
+domain or DNS record is needed.
 
 Two rules:
 
-1. **Route `/poptonium/` to the container on port 8085**, preserving the full path (no URI rewrite,
-   since the app already mounts its routes under `/poptonium`).
+1. **Route `/poptonium/` to the container on port 8085**, preserving the full path (no URI rewrite).
 2. **Restrict `/poptonium/admin` to your LAN.** The admin UI has its own login, but it should not be
    exposed to the public internet. The app itself never calls `/admin`, so locking it down does not
    affect the client.
@@ -104,7 +94,7 @@ Paste both blocks inside the `server { ... }` block of your Plex reverse-proxy c
 main `location / { ... }` Plex block, then reload the proxy:
 
 ```nginx
-# Admin dashboard + auth/config endpoints: LAN-only (matched before the API block).
+# Admin dashboard: LAN-only (matched before the API block).
 location ~ ^/poptonium/admin(/|$) {
     if ($lan-ip != yes) { return 404; }
     include /config/nginx/proxy.conf;
@@ -115,8 +105,7 @@ location ~ ^/poptonium/admin(/|$) {
     proxy_pass $upstream_proto://$upstream_app:$upstream_port;
 }
 
-# Public API (sections, ratings, capabilities, popular, overseerr, opensubtitles,
-# subtitle-prefs, the Plex proxy).
+# Public API used by the app.
 location /poptonium/ {
     include /config/nginx/proxy.conf;
     include /config/nginx/resolver.conf;
@@ -154,30 +143,29 @@ gate `/poptonium/admin` to the LAN by whatever access-control mechanism your pro
 
 ## Configuration
 
-All integration credentials are configured in the admin UI (setup wizard or **Integrations** tab)
-and stored in `/data/config.json`; secrets are masked in the UI. The environment variables below are
-optional and only **seed** that file on first boot — handy for automated/Unraid deploys — after which
-the file wins and env changes are ignored.
+Everything is configured in the admin UI (setup wizard or the **Integrations** tab), with a
+**Test connection** button for each integration and secrets masked in the interface.
+
+The environment variables below are **optional** — they let you pre-fill the integrations for an
+automated or Unraid deploy. Once you're running, you can add or change everything from the UI instead.
 
 | Var | Required | Purpose |
 |-----|----------|---------|
-| `PLEX_URL`, `PLEX_TOKEN` | yes | Plex Media Server connection. The service blocks the admin UI until this is reachable. |
-| `MDBLIST_API_KEY` | no | mdblist.com key: the source for all ratings plus the Discover feed. Blank disables ratings and the popular feed only. |
+| `PLEX_URL`, `PLEX_TOKEN` | yes | Plex Media Server connection. The admin UI stays blocked until this is reachable. |
+| `MDBLIST_API_KEY` | no | mdblist.com key: the source for all ratings plus the Discover feed. Without it, ratings and the popular feed are simply empty. |
 | `OVERSEERR_URL`, `OVERSEERR_API_KEY` | no | Overseerr request/search proxy. |
 | `OPENSUBTITLES_API_KEY` | no | App API key from opensubtitles.com (Profile, API Consumers). Required for online subtitle search/download. |
 | `OPENSUBTITLES_USERNAME`, `OPENSUBTITLES_PASSWORD` | no | Account whose daily download quota (20/day free) is used. |
 
-### Configured in the admin UI (stored on the `/data` bind)
+## What the admin UI does
 
-- **Library ratings sync**: nightly bulk-refresh of the whole library's ratings. Default is on at
-  03:00; toggle it and pick the hour on the Dashboard, or run it on demand.
-- **Ratings**: which sources show per item and the rating formula. Default is MDbList's own score;
-  the custom preset is a weighted, optionally vote-aware average used as the canonical rating for
-  sorting and section minimums.
-- **Custom sections**: create **Plex Collection** sections (mirror a collection live) or **Filter**
-  sections (library items matching RT/TMDB minimums, added-within / release-year windows, genres).
-  Each has a title, optional subtitle, order, enabled toggle, a style (**Row** or **Hero**), and a
-  placement anchor on the Library page. The app renders them from `/sections/resolved`. Newer
-  section capabilities are gated per app version so older apps degrade or skip gracefully — see
-  [docs/section-schema-versioning.md](docs/section-schema-versioning.md).
-- **Maintenance**: clear the ratings or popular caches and trigger scheduled jobs on demand.
+- **Dashboard** — health of each integration at a glance, plus on-demand controls for the scheduled
+  jobs and caches.
+- **Library ratings sync** — a nightly refresh of your whole library's ratings (default 03:00; change
+  the hour, toggle it off, or run it now).
+- **Ratings** — choose which sources show per item and how the overall rating used for sorting is
+  calculated.
+- **Custom sections** — build the rows and heroes that appear on the app's Library page, either
+  mirroring a Plex collection or filtering your library by ratings, dates, and genres. Give each a
+  title, style (**Row** or **Hero**), and a spot on the page.
+- **Maintenance** — clear caches and trigger scheduled jobs on demand.
