@@ -32,14 +32,16 @@ The app listens on container port **8085** and stores its data under `/data`, so
 > **Keep the host port at 8085.** On the same LAN with no reverse proxy, the client reaches the
 > backend directly on port 8085. Changing the host port breaks that direct-discovery path.
 
+No configuration is needed to start — you enter every key in the setup wizard once it's running.
+
 ### Docker Compose
 
 ```bash
-cp .env.example .env   # set PLEX_URL + PLEX_TOKEN, plus any optional vars
 docker compose up -d
 ```
 
-`docker-compose.yml` maps host `8085:8085` and binds `./data:/data`. Open `http://<host>:8085/admin`.
+`docker-compose.yml` maps host `8085:8085` and binds `./data:/data`. Open `http://<host>:8085/admin`
+and finish setup in the wizard.
 
 ### Plain Docker
 
@@ -48,15 +50,13 @@ docker build -t poptonium .
 docker run -d --name poptonium \
   -p 8085:8085 \
   -v /mnt/user/appdata/poptonium:/data \
-  -e PLEX_URL=http://<plex-host>:32400 \
-  -e PLEX_TOKEN=<your-plex-token> \
   poptonium
 ```
 
 ### Unraid
 
-Open the **Apps** tab, search for **Poptonium**, and click Install. Set `PLEX_URL` and `PLEX_TOKEN`
-(and any optional vars), then open the WebUI (`http://<host>:8085/admin`).
+Open the **Apps** tab, search for **Poptonium**, and click Install. You can leave the variables
+blank, then open the WebUI (`http://<host>:8085/admin`) and enter your keys in the wizard.
 
 (If you prefer to add it by hand, the same template lives at
 [`templates/poptonium.xml`](templates/poptonium.xml): Docker, Add Container, Template.)
@@ -64,11 +64,11 @@ Open the **Apps** tab, search for **Poptonium**, and click Install. Set `PLEX_UR
 ### First run
 
 Open `/admin` and create a single admin account — it guards the dashboard and every setting. A
-**setup wizard** then walks you through connecting Plex (required) plus MDbList, Overseerr and
-OpenSubtitles (optional), each with a **Test connection** button. Nothing needs a restart. Once Plex
-tests green, a second wizard offers to seed a set of **starter sections** adapted to your own
-libraries, or you can start from a blank board. You can revisit and change any integration later
-under **Integrations**.
+**setup wizard** then walks you through entering and testing every credential right in the browser:
+Plex (required) plus MDbList, Overseerr and OpenSubtitles (optional), each with a **Test connection**
+button. No environment variables or restarts are needed. Once Plex tests green, a second wizard
+offers to seed a set of **starter sections** adapted to your own libraries, or you can start from a
+blank board. You can revisit and change any integration later under **Integrations**.
 
 ## Reverse proxy
 
@@ -143,19 +143,21 @@ gate `/poptonium/admin` to the LAN by whatever access-control mechanism your pro
 
 ## Configuration
 
-Everything is configured in the admin UI (setup wizard or the **Integrations** tab), with a
-**Test connection** button for each integration and secrets masked in the interface.
+Everything is configured in the admin UI — the setup wizard or the **Integrations** tab — with a
+**Test connection** button for each integration and secrets masked in the interface. You never need
+to touch environment variables.
 
-The environment variables below are **optional** — they let you pre-fill the integrations for an
-automated or Unraid deploy. Once you're running, you can add or change everything from the UI instead.
+If you'd rather pre-fill the integrations for an automated or Unraid deploy, you can optionally set
+the environment variables below instead of using the wizard; either way you can change everything in
+the UI afterward. These are the credentials the wizard collects:
 
-| Var | Required | Purpose |
-|-----|----------|---------|
-| `PLEX_URL`, `PLEX_TOKEN` | yes | Plex Media Server connection. The admin UI stays blocked until this is reachable. |
-| `MDBLIST_API_KEY` | no | mdblist.com key: the source for all ratings plus the Discover feed. Without it, ratings and the popular feed are simply empty. |
-| `OVERSEERR_URL`, `OVERSEERR_API_KEY` | no | Overseerr request/search proxy. |
-| `OPENSUBTITLES_API_KEY` | no | App API key from opensubtitles.com (Profile, API Consumers). Required for online subtitle search/download. |
-| `OPENSUBTITLES_USERNAME`, `OPENSUBTITLES_PASSWORD` | no | Account whose daily download quota (20/day free) is used. |
+| Setting | Needed for | Notes |
+|---------|------------|-------|
+| `PLEX_URL`, `PLEX_TOKEN` | Plex (required) | Plex Media Server connection. The dashboard stays locked until Plex connects. |
+| `MDBLIST_API_KEY` | Ratings + Discover feed | mdblist.com key. Without it, ratings and the popular feed are simply empty. |
+| `OVERSEERR_URL`, `OVERSEERR_API_KEY` | In-app search & requests | Overseerr request/search proxy. |
+| `OPENSUBTITLES_API_KEY` | Subtitle search/download | App API key from opensubtitles.com (Profile, API Consumers). |
+| `OPENSUBTITLES_USERNAME`, `OPENSUBTITLES_PASSWORD` | Subtitle downloads | Account whose daily download quota (20/day free) is used. |
 
 ## What the admin UI does
 
