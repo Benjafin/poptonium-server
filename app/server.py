@@ -38,6 +38,7 @@ from . import (
     ratings,
     sections,
     subtitle_prefs,
+    subtitle_vtt,
 )
 
 @asynccontextmanager
@@ -63,6 +64,7 @@ for _module in (
     plugins,
     sections,
     subtitle_prefs,
+    subtitle_vtt,
     opensubtitles,
     capabilities,
     auth,
