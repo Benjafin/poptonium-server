@@ -46,14 +46,11 @@ async def capabilities():
         # Section-rendering contract version. Clients compare each section's
         # `min_app_version` against their own schema version and skip newer ones.
         "section_schema_version": SECTION_SCHEMA_VERSION,
-        "features": ["sections", "ratings", "popular", "overseerr", "opensubtitles", "plugins", "subtitle_prefs", "subtitle_vtt"],
+        "features": ["sections", "ratings", "popular", "overseerr", "opensubtitles", "plugins", "subtitle_prefs"],
         "sections": True,
         "ratings": bool(settings.MDBLIST_API_KEY),
         # Per-series subtitle preference store (Plex has no per-show subtitle setting).
         "subtitle_prefs": True,
-        # Subtitle streams re-served as WebVTT for Chromecast side-loading (needs Plex
-        # to pull the raw stream from).
-        "subtitle_vtt": plex_configured(),
         # The Plex reverse-proxy (backend mode) is only usable if we can reach Plex.
         "plex_proxy": plex_configured(),
         "overseerr_configured": bool(settings.OVERSEERR_URL and settings.OVERSEERR_API_KEY),
