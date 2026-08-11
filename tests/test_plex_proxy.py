@@ -195,6 +195,49 @@ async def test_enriches_json_with_ratings(monkeypatch):
 
 
 @respx.mock
+async def test_enriches_items_nested_in_hubs(monkeypatch):
+    """/hubs/search keeps its items one level deeper, one list per hub."""
+    _mock_auth_gate()
+    cache = {
+        (603, "movie"): {"sources": {"imdb": {"score": 8.5, "votes": 100},
+                                     "mdblist": {"score": 80, "votes": None}}},
+        (1396, "show"): {"sources": {"imdb": {"score": 9.0, "votes": 100},
+                                     "mdblist": {"score": 90, "votes": None}}},
+    }
+    _stub_ratings(monkeypatch, cfg={"formula": {"missing_mdblist": "zero", "preset": "mdblist"}},
+                  cache=cache)
+    respx.get(f"{settings.PLEX_URL}/hubs/search").mock(
+        return_value=httpx.Response(200, json={
+            "MediaContainer": {"Hub": [
+                {"type": "movie", "Metadata": [
+                    {"type": "movie", "title": "M", "Guid": [{"id": "tmdb://603"}]},
+                ]},
+                {"type": "show", "Metadata": [
+                    {"type": "show", "title": "S", "Guid": [{"id": "tmdb://1396"}]},
+                ]},
+                {"type": "actor", "Directory": [{"tag": "Someone"}]},
+            ]},
+        }, headers={"content-type": "application/json"}),
+    )
+    async with await _client() as ac:
+        resp = await ac.get("/plex/hubs/search", params={"query": "m"}, headers={"X-Plex-Token": "tok"})
+    hubs = resp.json()["MediaContainer"]["Hub"]
+    assert hubs[0]["Metadata"][0]["mdblistRating"] == 80.0
+    assert hubs[1]["Metadata"][0]["mdblistRating"] == 90.0
+
+
+@respx.mock
+async def test_injects_includeguids_for_search_get():
+    _mock_auth_gate()
+    route = respx.get(f"{settings.PLEX_URL}/search").mock(
+        return_value=httpx.Response(200, content=b"ok", headers={"content-type": "text/plain"})
+    )
+    async with await _client() as ac:
+        await ac.get("/plex/search", params={"query": "m"}, headers={"X-Plex-Token": "tok"})
+    assert route.calls.last.request.url.params.get("includeGuids") == "1"
+
+
+@respx.mock
 async def test_enrich_noop_when_no_metadata(monkeypatch):
     _mock_auth_gate()
     _stub_ratings(monkeypatch)

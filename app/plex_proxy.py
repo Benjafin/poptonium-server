@@ -29,8 +29,15 @@ async def _enrich_media_container(data) -> None:
     """Inject `mdblistRating` + `mdblistSources` into each Metadata item that has
     a cached rating (matched by TMDB id). Mutates `data` in place."""
     mc = data.get("MediaContainer") if isinstance(data, dict) else None
-    metas = mc.get("Metadata") if isinstance(mc, dict) else None
-    if not isinstance(metas, list) or not metas:
+    if not isinstance(mc, dict):
+        return
+    metas = mc.get("Metadata") if isinstance(mc.get("Metadata"), list) else []
+    # Hub endpoints (/hubs/search, /hubs/…) nest their items one level deeper, one
+    # list per hub; without this their cards would be the only ones with no ratings.
+    for hub in mc.get("Hub") or []:
+        if isinstance(hub, dict) and isinstance(hub.get("Metadata"), list):
+            metas = metas + hub["Metadata"]
+    if not metas:
         return
     cfg = await get_rating_config()
     pairs = []
@@ -67,7 +74,7 @@ async def plex_proxy(path: str, request: Request):
         raise HTTPException(503, "Plex not configured")
 
     params = dict(request.query_params)
-    if request.method == "GET" and re.match(r"^(library|hubs)/", path):
+    if request.method == "GET" and re.match(r"^(library|hubs|search)", path):
         params.setdefault("includeGuids", "1")
     fwd_headers = {k: v for k, v in request.headers.items() if k.lower() not in DROP_REQ_HEADERS}
     body = await request.body()
