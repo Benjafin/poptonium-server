@@ -340,3 +340,94 @@ async def test_malformed_json_falls_through_to_passthrough(monkeypatch):
         resp = await ac.get("/plex/library/sections", headers={"X-Plex-Token": "tok"})
     assert resp.status_code == 200
     assert resp.content == b"not json"
+
+
+# ---- listing field trim -----------------------------------------------------
+
+def _listing_item():
+    """A Metadata row shaped like a real one: card fields, plus the heavy fields
+    only the detail page reads."""
+    return {
+        "ratingKey": "1", "type": "movie", "title": "M", "year": 2020,
+        "thumb": "/t", "art": "/a", "addedAt": 123, "duration": 99,
+        "Guid": [{"id": "tmdb://603"}],
+        "Media": [{"id": 1, "Part": [{"id": 2, "Stream": [{"id": 3}] * 20}]}],
+        "summary": "x" * 500,
+        "Role": [{"tag": "Someone", "thumb": "/r"}],
+        "Director": [{"tag": "D"}], "Writer": [{"tag": "W"}],
+        "tagline": "t", "studio": "s", "contentRating": "PG",
+        "UltraBlurColors": {"topLeft": "aabbcc"},
+        "Country": [{"tag": "US"}], "slug": "m", "primaryExtraKey": "/e",
+        "Image": [
+            {"type": "clearLogo", "url": "/logo"},
+            {"type": "coverPoster", "url": "/cover"},
+            {"type": "background", "url": "/bg"},
+        ],
+    }
+
+
+@respx.mock
+async def test_listing_drops_fields_no_card_renders(monkeypatch):
+    _mock_auth_gate()
+    _stub_ratings(monkeypatch)
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/all").mock(
+        return_value=httpx.Response(200, json={"MediaContainer": {"Metadata": [_listing_item()]}},
+                                    headers={"content-type": "application/json"}),
+    )
+    async with await _client() as ac:
+        resp = await ac.get("/plex/library/sections/1/all", headers={"X-Plex-Token": "tok"})
+    meta = resp.json()["MediaContainer"]["Metadata"][0]
+
+    # Card fields survive, and so does what the shelves sort on.
+    for keep in ("ratingKey", "type", "title", "year", "thumb", "art", "addedAt", "duration", "Guid"):
+        assert keep in meta, keep
+    # Detail-only and never-decoded fields are gone.
+    for drop in ("Media", "summary", "Role", "Director", "Writer", "tagline", "studio",
+                 "contentRating", "UltraBlurColors", "Country", "slug", "primaryExtraKey"):
+        assert drop not in meta, drop
+
+
+@respx.mock
+async def test_listing_keeps_only_the_clearlogo_image(monkeypatch):
+    _mock_auth_gate()
+    _stub_ratings(monkeypatch)
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/all").mock(
+        return_value=httpx.Response(200, json={"MediaContainer": {"Metadata": [_listing_item()]}},
+                                    headers={"content-type": "application/json"}),
+    )
+    async with await _client() as ac:
+        resp = await ac.get("/plex/library/sections/1/all", headers={"X-Plex-Token": "tok"})
+    images = resp.json()["MediaContainer"]["Metadata"][0]["Image"]
+    assert [i["type"] for i in images] == ["clearLogo"]
+
+
+@respx.mock
+async def test_detail_fetch_is_not_trimmed(monkeypatch):
+    """The app refetches /library/metadata/{key} for the detail page and needs the
+    full row, so the trim must not reach it."""
+    _mock_auth_gate()
+    _stub_ratings(monkeypatch)
+    respx.get(f"{settings.PLEX_URL}/library/metadata/1").mock(
+        return_value=httpx.Response(200, json={"MediaContainer": {"Metadata": [_listing_item()]}},
+                                    headers={"content-type": "application/json"}),
+    )
+    async with await _client() as ac:
+        resp = await ac.get("/plex/library/metadata/1", headers={"X-Plex-Token": "tok"})
+    meta = resp.json()["MediaContainer"]["Metadata"][0]
+    assert "Media" in meta and "summary" in meta and "Role" in meta
+    assert len(meta["Image"]) == 3
+
+
+@respx.mock
+async def test_trimmed_listing_still_carries_ratings(monkeypatch):
+    """Enrichment runs before the trim, so mdblist fields must survive it."""
+    _mock_auth_gate()
+    _stub_ratings(monkeypatch, cache={(603, "movie"): {"sources": {"imdb": {"score": 80}}}})
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/all").mock(
+        return_value=httpx.Response(200, json={"MediaContainer": {"Metadata": [_listing_item()]}},
+                                    headers={"content-type": "application/json"}),
+    )
+    async with await _client() as ac:
+        resp = await ac.get("/plex/library/sections/1/all", headers={"X-Plex-Token": "tok"})
+    meta = resp.json()["MediaContainer"]["Metadata"][0]
+    assert "mdblistSources" in meta

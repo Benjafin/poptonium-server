@@ -5,6 +5,7 @@ headers (per-user state preserved), and injects our mdblist ratings into library
 and hub JSON listings so the app needs no second round-trip.
 """
 
+import json
 import re
 
 import httpx
@@ -12,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
 from .client_auth import require_plex_user
-from .config import settings
+from .config import log, settings
 from .http_client import http_client
 from .plex import (
     DROP_REQ_HEADERS,
@@ -64,6 +65,53 @@ async def _enrich_media_container(data) -> None:
             m["mdblistRating"] = rating
 
 
+# Fields a library listing actually needs. The app renders shelf/grid cards from these
+# and sorts on addedAt plus the injected mdblist rating; everything else in a Plex
+# listing is only ever read on the detail page, which refetches /library/metadata/{key}
+# anyway. Measured on a 645-item movie section: 1537 KB -> 349 KB (4.4x).
+LIST_FIELDS = frozenset("""
+    ratingKey key parentRatingKey grandparentRatingKey guid type title parentTitle
+    grandparentTitle year thumb art parentThumb grandparentThumb grandparentArt
+    duration viewOffset index parentIndex leafCount viewedLeafCount viewCount
+    addedAt lastViewedAt rating Guid Genre Image mdblistRating mdblistSources
+""".split())
+
+# Listings only. /library/metadata/{key} (the detail fetch) must stay complete, so this
+# deliberately does not match it; /children and /all carry the same card-shaped rows.
+LIST_PATHS = re.compile(r"^library/(sections/[^/]+/(all|recentlyAdded|newest|onDeck)|"
+                        r"metadata/[^/]+/children|onDeck)/?$")
+
+
+def _trim_listing(data) -> None:
+    """Drop fields no card renders from a listing response, in place.
+
+    The heavy ones are Media (with its Part/Stream trees), summary, and the three
+    Image variants that aren't clearLogo — together about two thirds of the payload.
+    Anything that isn't the shape we expect is left alone.
+    """
+    mc = data.get("MediaContainer") if isinstance(data, dict) else None
+    if not isinstance(mc, dict):
+        return
+    metas = mc.get("Metadata")
+    if not isinstance(metas, list):
+        return
+    for m in metas:
+        if not isinstance(m, dict):
+            continue
+        for key in [k for k in m if k not in LIST_FIELDS]:
+            del m[key]
+        # clearLogo is the only Image the app looks up (PlexItem.clearLogoPath); the
+        # other three variants it ships are a fifth of the payload on their own.
+        images = m.get("Image")
+        if isinstance(images, list):
+            logos = [i for i in images
+                     if isinstance(i, dict) and i.get("type") == "clearLogo"]
+            if logos:
+                m["Image"] = logos
+            else:
+                del m["Image"]
+
+
 @router.api_route("/plex/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                   dependencies=[Depends(require_plex_user)])
 async def plex_proxy(path: str, request: Request):
@@ -92,6 +140,14 @@ async def plex_proxy(path: str, request: Request):
         try:
             data = up.json()
             await _enrich_media_container(data)
+            if LIST_PATHS.match(path):
+                _trim_listing(data)
+                body_out = json.dumps(data, separators=(",", ":")).encode()
+                log.info("plex listing %s: %d -> %d bytes (%.0f%% saved)", path,
+                         len(up.content), len(body_out),
+                         100 * (1 - len(body_out) / max(len(up.content), 1)))
+                return Response(content=body_out, status_code=up.status_code,
+                                media_type="application/json")
             return JSONResponse(data, status_code=up.status_code)
         except Exception:
             pass  # fall through to passthrough on any parse/enrich issue
