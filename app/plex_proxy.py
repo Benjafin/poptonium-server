@@ -21,14 +21,27 @@ from .plex import (
     plex_configured,
     tmdb_from_metadata,
 )
-from .ratings import compute_rating, effective_sources, get_rating_config, ratings_for_tmdb
+from .ratings import (
+    compute_rating,
+    effective_sources,
+    get_rating_config,
+    rank_prior,
+    rank_score,
+    ratings_for_tmdb,
+)
 
 router = APIRouter()
 
 
 async def _enrich_media_container(data) -> None:
     """Inject `mdblistRating` + `mdblistSources` into each Metadata item that has
-    a cached rating (matched by TMDB id). Mutates `data` in place."""
+    a cached rating (matched by TMDB id). Mutates `data` in place.
+
+    `mdblistRating` is the vote-shrunk ranking score, not the raw canonical
+    rating: the app sorts its library on this field, so sending the raw value
+    would order that screen differently from server-built rating sections (a
+    99%-from-441-votes concert film tied with Star Wars at 89). The per-source
+    badges in `mdblistSources` stay raw, so nothing displayed changes."""
     mc = data.get("MediaContainer") if isinstance(data, dict) else None
     if not isinstance(mc, dict):
         return
@@ -49,6 +62,7 @@ async def _enrich_media_container(data) -> None:
     if not pairs:
         return
     cache = await ratings_for_tmdb(pairs)
+    prior = await rank_prior()
     for m in metas:
         tid = tmdb_from_metadata(m)
         if not tid:
@@ -62,7 +76,7 @@ async def _enrich_media_container(data) -> None:
         m["mdblistSources"] = sources
         rating = compute_rating(sources, cfg)
         if rating is not None:
-            m["mdblistRating"] = rating
+            m["mdblistRating"] = rank_score(rating, sources, cfg, prior)
 
 
 # Fields a library listing actually needs. The app renders shelf/grid cards from these

@@ -159,15 +159,19 @@ async def test_upstream_non_200_status_passed_through():
 
 # ---- JSON rating enrichment -------------------------------------------------
 
-def _stub_ratings(monkeypatch, cfg=None, cache=None):
+def _stub_ratings(monkeypatch, cfg=None, cache=None, prior=65.0):
     async def _cfg():
         return cfg if cfg is not None else {"formula": {"missing_mdblist": "zero"}}
 
     async def _for(pairs):
         return cache or {}
 
+    async def _prior(refresh=False):
+        return prior
+
     monkeypatch.setattr(plex_proxy, "get_rating_config", _cfg)
     monkeypatch.setattr(plex_proxy, "ratings_for_tmdb", _for)
+    monkeypatch.setattr(plex_proxy, "rank_prior", _prior)
 
 
 @respx.mock
@@ -192,6 +196,38 @@ async def test_enriches_json_with_ratings(monkeypatch):
     meta = resp.json()["MediaContainer"]["Metadata"][0]
     assert meta["mdblistRating"] == 80.0
     assert "mdblistSources" in meta
+
+
+@respx.mock
+async def test_mdblist_rating_is_vote_shrunk_but_sources_stay_raw(monkeypatch):
+    """The app sorts its library on `mdblistRating`, so it must carry the same
+    vote-shrunk score server-built rating sections rank by -- otherwise a thinly
+    -reviewed title ties with the classics on that screen while ranking well
+    below them everywhere else. The badges in `mdblistSources` stay untouched."""
+    _mock_auth_gate()
+    thin = {"popcorn": {"score": 99, "votes": 441},   # V = 441/800 = 0.551
+            "mdblist": {"score": 89, "votes": None}}
+    _stub_ratings(
+        monkeypatch,
+        cfg={"formula": {"missing_mdblist": "zero", "preset": "mdblist",
+                         "min_votes": {"popcorn": 800}}},
+        cache={(603, "movie"): {"sources": thin}},
+        prior=72.3,
+    )
+    respx.get(f"{settings.PLEX_URL}/library/sections/1/all").mock(
+        return_value=httpx.Response(200, json={
+            "MediaContainer": {"Metadata": [
+                {"type": "movie", "title": "Concert Film", "Guid": [{"id": "tmdb://603"}]},
+            ]},
+        }, headers={"content-type": "application/json"}),
+    )
+    async with await _client() as ac:
+        resp = await ac.get("/plex/library/sections/1/all", headers={"X-Plex-Token": "tok"})
+    meta = resp.json()["MediaContainer"]["Metadata"][0]
+    # conf = 0.55125/1.55125 = 0.35536 -> 0.35536*89 + 0.64464*72.3 = 78.234
+    assert meta["mdblistRating"] == 78.234
+    assert meta["mdblistRating"] < 89.0                      # demoted, not the raw score
+    assert meta["mdblistSources"]["popcorn"] == {"score": 99, "votes": 441}  # badge unchanged
 
 
 @respx.mock
