@@ -283,27 +283,39 @@ def rank_score(rating: Optional[float], sources: dict, cfg: dict, prior: float) 
     to how thin the underlying vote counts are, so a 100% from 12 reviews ranks
     below a 96% from 400.
 
-        conf = mean over present sources of  v / (v + m)
+        V = sum over present sources of  v / m      (total evidence, in units of m)
+        conf = V / (V + 1)
         score = conf * rating + (1 - conf) * prior
+
+    Evidence is POOLED, not averaged. Averaging per-source confidence is
+    non-monotonic: it made a thinly-reviewed source worse than a missing one, so
+    a title was penalized for a source having polled it at all. Pooling can only
+    ever raise V, so an extra source never lowers a title's rank.
 
     The displayed rating and badges are untouched — this only decides order. A
     title with no per-source vote data ranks on its rating as-is; absent evidence
-    is not evidence of thinness."""
+    is not evidence of thinness.
+
+    A source scored but with zero votes means mdblist has no vote count for it,
+    not that nobody voted (a score can't exist without ratings behind it) — it is
+    skipped rather than counted as maximally thin. This matters: mdblist supplies
+    no RT-audience counts at all for TV, so counting them as zero would demote
+    every show against every film on a mixed shelf."""
     if rating is None:
         return -1.0
     min_votes = cfg.get("formula", {}).get("min_votes", {})
-    confs = []
+    evidence = 0.0
     for src, data in (sources or {}).items():
         if src == "mdblist" or not isinstance(data, dict) or data.get("score") is None:
             continue
         m = float(min_votes.get(src, 0) or 0)
-        if m <= 0:
-            continue
         v = float(data.get("votes") or 0)
-        confs.append(v / (v + m))
-    if not confs:
+        if m <= 0 or v <= 0:
+            continue
+        evidence += v / m
+    if evidence <= 0:
         return float(rating)
-    conf = sum(confs) / len(confs)
+    conf = evidence / (evidence + 1.0)
     return round(conf * float(rating) + (1.0 - conf) * prior, 3)
 
 

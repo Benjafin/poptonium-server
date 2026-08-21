@@ -133,11 +133,21 @@ def test_rank_score_reorders_thin_high_score_below_thick_lower_score():
     assert thick > thin
 
 
-def test_rank_score_averages_confidence_across_sources():
-    # tomatoes 400/500=0.8, imdb 50000/100000=0.5 → conf 0.65
-    # 0.65*85 + 0.35*65 = 78.0
+def test_rank_score_pools_evidence_across_sources():
+    # V = 400/100 + 50000/50000 = 5 → conf = 5/6 = 0.8333
+    # 0.8333*85 + 0.1667*65 = 81.667
     src = {"tomatoes": {"score": 90, "votes": 400}, "imdb": {"score": 80, "votes": 50000}}
-    assert ratings.rank_score(85.0, src, _RANK_CFG, 65.0) == 78.0
+    assert ratings.rank_score(85.0, src, _RANK_CFG, 65.0) == 81.667
+
+
+def test_rank_score_extra_source_never_lowers_rank():
+    """Pooled evidence is monotonic: adding a thinly-voted source can only raise
+    confidence. Averaging per-source confidence made the thin source a penalty,
+    so a title ranked worse for having been polled at all."""
+    base = {"imdb": {"score": 93, "votes": 450000}}
+    plus_thin = {**base, "tomatoes": {"score": 100, "votes": 26}}
+    assert ratings.rank_score(93.0, plus_thin, _RANK_CFG, 65.0) >= \
+           ratings.rank_score(93.0, base, _RANK_CFG, 65.0)
 
 
 def test_rank_score_ignores_mdblist_aggregate_and_unconfigured_sources():
@@ -159,16 +169,27 @@ def test_rank_score_none_rating_sorts_last():
                               _RANK_CFG, 65.0) == -1.0
 
 
-def test_rank_score_zero_votes_collapses_to_prior():
-    src = {"tomatoes": {"score": 100, "votes": 0}}
-    assert ratings.rank_score(100.0, src, _RANK_CFG, 65.0) == 65.0
+def test_rank_score_treats_scored_but_voteless_source_as_unknown():
+    """mdblist reports no RT-audience counts for TV, and `_parse_sources` coerces
+    that null to 0. A score can't exist without ratings behind it, so 0 means
+    'unknown' and must not count as maximum thinness -- otherwise every show is
+    demoted against every film on a mixed shelf."""
+    show = {"imdb": {"score": 93, "votes": 450000},   # conf 0.9
+            "popcorn": {"score": 98, "votes": 0}}      # no data -> skipped, not 0.0
+    assert ratings.rank_score(93.0, show, _RANK_CFG, 65.0) == 90.2
+    # Counting it as thin would have averaged 0.9 with 0.0 and landed near 77.6.
+
+
+def test_rank_score_all_sources_voteless_keeps_rating():
+    src = {"tomatoes": {"score": 100, "votes": 0}, "popcorn": {"score": 98, "votes": 0}}
+    assert ratings.rank_score(100.0, src, _RANK_CFG, 65.0) == 100.0
 
 
 def test_rank_score_shrinkage_is_symmetric_around_the_prior():
-    """Shrinkage pulls toward the catalog mean in both directions: an unevidenced
+    """Shrinkage pulls toward the catalog mean in both directions: a thinly-rated
     below-average title is lifted, not just high ones demoted."""
-    src = {"tomatoes": {"score": 20, "votes": 0}}
-    assert ratings.rank_score(20.0, src, _RANK_CFG, 65.0) == 65.0
+    src = {"tomatoes": {"score": 20, "votes": 5}}
+    assert 20.0 < ratings.rank_score(20.0, src, _RANK_CFG, 65.0) < 65.0
 
 
 # ---- display-group normalization --------------------------------------------
