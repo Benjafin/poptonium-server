@@ -175,7 +175,14 @@ async def get_rating_config() -> dict:
                 merged["display_sources"] = ds
                 merged["display_groups"] = [{"visibility": "always", "sources": ds}] if ds else []
             if isinstance(cfg.get("formula"), dict):
-                merged["formula"].update(cfg["formula"])
+                formula = dict(cfg["formula"])
+                # `weights`/`min_votes` are per-source maps: merge them key-wise so a
+                # saved config that tuned one source still picks up calibrated
+                # defaults for the rest (and for sources added since it was saved).
+                for key in ("weights", "min_votes"):
+                    if isinstance(formula.get(key), dict):
+                        formula[key] = {**merged["formula"][key], **formula[key]}
+                merged["formula"].update(formula)
         except Exception:
             pass
     return merged
@@ -230,6 +237,74 @@ def compute_rating(sources: dict, cfg: dict) -> Optional[float]:
     if den <= 0:
         return md_score  # nothing usable → fall back to the mdblist aggregate
     return round(num / den, 1)
+
+
+# ---------- ranking shrinkage ----------
+
+# Used until the ratings cache has enough rows to derive a real catalog mean.
+_RANK_PRIOR_FALLBACK = 65.0
+_rank_prior_cache: Optional[float] = None
+
+
+async def rank_prior(refresh: bool = False) -> float:
+    """The score thin-evidence titles are pulled toward when ranking: the mean
+    mdblist score across the cached catalog. Derived from the library rather than
+    hardcoded so it tracks the actual score distribution. Cached in-process and in
+    `meta`; recomputed by the nightly ratings sync."""
+    global _rank_prior_cache
+    if _rank_prior_cache is not None and not refresh:
+        return _rank_prior_cache
+    if not refresh:
+        raw = await meta_get("rank_prior")
+        if raw:
+            try:
+                _rank_prior_cache = float(raw)
+                return _rank_prior_cache
+            except ValueError:
+                pass
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT AVG(mdblist_score) AS avg FROM mdblist_ratings WHERE mdblist_score > 0"
+        )
+        row = await cursor.fetchone()
+        avg = row["avg"] if row else None
+    finally:
+        await db.close()
+    if avg is None:
+        return _RANK_PRIOR_FALLBACK  # empty cache: don't persist a made-up prior
+    _rank_prior_cache = round(float(avg), 1)
+    await meta_set("rank_prior", str(_rank_prior_cache))
+    return _rank_prior_cache
+
+
+def rank_score(rating: Optional[float], sources: dict, cfg: dict, prior: float) -> float:
+    """Ranking-only score: the canonical rating shrunk toward `prior` in proportion
+    to how thin the underlying vote counts are, so a 100% from 12 reviews ranks
+    below a 96% from 400.
+
+        conf = mean over present sources of  v / (v + m)
+        score = conf * rating + (1 - conf) * prior
+
+    The displayed rating and badges are untouched — this only decides order. A
+    title with no per-source vote data ranks on its rating as-is; absent evidence
+    is not evidence of thinness."""
+    if rating is None:
+        return -1.0
+    min_votes = cfg.get("formula", {}).get("min_votes", {})
+    confs = []
+    for src, data in (sources or {}).items():
+        if src == "mdblist" or not isinstance(data, dict) or data.get("score") is None:
+            continue
+        m = float(min_votes.get(src, 0) or 0)
+        if m <= 0:
+            continue
+        v = float(data.get("votes") or 0)
+        confs.append(v / (v + m))
+    if not confs:
+        return float(rating)
+    conf = sum(confs) / len(confs)
+    return round(conf * float(rating) + (1.0 - conf) * prior, 3)
 
 
 async def ratings_for_tmdb(pairs: list[tuple]) -> dict[tuple, dict]:
@@ -362,6 +437,7 @@ async def refresh_library_ratings():
         items = await fetch_and_store_ratings(media_type, tmdb_ids)
         total += len(items)
     await meta_set("library_ratings_last_sync", str(time.time()))
+    await rank_prior(refresh=True)  # re-derive the shrinkage prior from the fresh catalog
     log.info("Library ratings sync: cached %d titles", total)
 
 

@@ -19,6 +19,7 @@ import pytest
 import respx
 
 import app.db as _db
+import app.ratings as _ratings
 from app import section_resolve as sr
 from app.config import settings
 
@@ -90,6 +91,9 @@ def _reset_module_caches():
 @pytest.fixture
 def isolate_db(tmp_path, monkeypatch):
     monkeypatch.setattr(_db, "DB_PATH", str(tmp_path / "sr.db"))
+    # The ranking prior is memoized in-process; drop it so it re-derives from
+    # this test's fresh DB instead of the previous test's catalog.
+    monkeypatch.setattr(_ratings, "_rank_prior_cache", None)
 
 
 # --------------------------------------------------------------------------- #
@@ -251,6 +255,32 @@ async def test_resolve_filter_rank_by_rating_sorts_desc(isolate_db, monkeypatch)
 
     out = await sr._resolve_filter({"library_section": "1", "sort": "combined:desc"})
     assert [it["rating_key"] for it in out] == ["2", "3", "1"]
+
+
+async def test_resolve_filter_rank_by_rating_demotes_thin_vote_counts(isolate_db, monkeypatch):
+    """A higher rating backed by a handful of votes ranks below a slightly lower
+    one backed by thousands, while the displayed rating stays untouched."""
+    await _seed_rating(1, "movie", {"mdblist": {"score": 90, "votes": None},
+                                    "tomatoes": {"score": 99, "votes": 8},
+                                    "imdb": {"score": 88, "votes": 300}})
+    await _seed_rating(2, "movie", {"mdblist": {"score": 84, "votes": None},
+                                    "tomatoes": {"score": 92, "votes": 450},
+                                    "imdb": {"score": 80, "votes": 400000}})
+    # Filler catalog rows: not in the shelf, but they set the shrinkage prior to a
+    # realistic below-shelf mean (~65). Both shelf titles are above-average, which
+    # is the regime a rating-ranked shelf actually operates in.
+    for i, score in enumerate([60, 60, 60, 60, 55, 55], start=10):
+        await _seed_rating(i, "movie", {"mdblist": {"score": score, "votes": None}})
+    metas = [_meta("1", "Thin", tmdb=1), _meta("2", "Thick", tmdb=2)]
+    monkeypatch.setattr(sr, "plex_get",
+                        _Fake({"/library/sections/1/all": _container(metas)}))
+
+    out = await sr._resolve_filter({"library_section": "1", "sort": "combined:desc"})
+
+    assert [it["rating_key"] for it in out] == ["2", "1"]
+    # Ranking only: the badges and canonical rating the client renders are as-is.
+    assert [it["rating"] for it in out] == [84.0, 90.0]
+    assert out[1]["sources"]["tomatoes"] == {"score": 99, "votes": 8}
 
 
 async def test_resolve_filter_randomize_shuffles_pool(isolate_db, monkeypatch):

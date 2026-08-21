@@ -108,6 +108,69 @@ def test_compute_rating_none_when_nothing_available():
     assert ratings.compute_rating({}, cfg) is None
 
 
+# ---- rank_score (vote-weighted ranking shrinkage) ----------------------------
+
+_RANK_CFG = _cfg(min_votes={"tomatoes": 100, "popcorn": 800, "imdb": 50000})
+
+
+def test_rank_score_shrinks_thin_vote_counts_toward_prior():
+    # conf = 10/(10+100) = 0.0909 → 0.0909*100 + 0.9091*65 = 68.2
+    src = {"tomatoes": {"score": 100, "votes": 10}}
+    assert ratings.rank_score(100.0, src, _RANK_CFG, 65.0) == 68.182
+
+
+def test_rank_score_leaves_well_evidenced_scores_near_intact():
+    # conf = 400/(400+100) = 0.8 → 0.8*96 + 0.2*65 = 89.8
+    src = {"tomatoes": {"score": 96, "votes": 400}}
+    assert ratings.rank_score(96.0, src, _RANK_CFG, 65.0) == 89.8
+
+
+def test_rank_score_reorders_thin_high_score_below_thick_lower_score():
+    """The motivating case: a perfect score from a handful of reviews must not
+    outrank a slightly lower score backed by two orders of magnitude more."""
+    thin = ratings.rank_score(100.0, {"tomatoes": {"score": 100, "votes": 10}}, _RANK_CFG, 65.0)
+    thick = ratings.rank_score(96.0, {"tomatoes": {"score": 96, "votes": 400}}, _RANK_CFG, 65.0)
+    assert thick > thin
+
+
+def test_rank_score_averages_confidence_across_sources():
+    # tomatoes 400/500=0.8, imdb 50000/100000=0.5 → conf 0.65
+    # 0.65*85 + 0.35*65 = 78.0
+    src = {"tomatoes": {"score": 90, "votes": 400}, "imdb": {"score": 80, "votes": 50000}}
+    assert ratings.rank_score(85.0, src, _RANK_CFG, 65.0) == 78.0
+
+
+def test_rank_score_ignores_mdblist_aggregate_and_unconfigured_sources():
+    # mdblist has votes=None, metacritic has no min_votes entry → neither counts.
+    src = {"mdblist": {"score": 88, "votes": None}, "metacritic": {"score": 70, "votes": 5},
+           "tomatoes": {"score": 90, "votes": 100}}
+    assert ratings.rank_score(88.0, src, _RANK_CFG, 65.0) == 76.5  # conf 0.5 only from tomatoes
+
+
+def test_rank_score_without_vote_data_keeps_rating():
+    # No usable per-source evidence → rank as-is rather than punish.
+    assert ratings.rank_score(88.0, {"mdblist": {"score": 88, "votes": None}},
+                              _RANK_CFG, 65.0) == 88.0
+    assert ratings.rank_score(88.0, {}, _RANK_CFG, 65.0) == 88.0
+
+
+def test_rank_score_none_rating_sorts_last():
+    assert ratings.rank_score(None, {"tomatoes": {"score": 90, "votes": 500}},
+                              _RANK_CFG, 65.0) == -1.0
+
+
+def test_rank_score_zero_votes_collapses_to_prior():
+    src = {"tomatoes": {"score": 100, "votes": 0}}
+    assert ratings.rank_score(100.0, src, _RANK_CFG, 65.0) == 65.0
+
+
+def test_rank_score_shrinkage_is_symmetric_around_the_prior():
+    """Shrinkage pulls toward the catalog mean in both directions: an unevidenced
+    below-average title is lifted, not just high ones demoted."""
+    src = {"tomatoes": {"score": 20, "votes": 0}}
+    assert ratings.rank_score(20.0, src, _RANK_CFG, 65.0) == 65.0
+
+
 # ---- display-group normalization --------------------------------------------
 
 def test_norm_display_groups_dedups_and_sanitizes():

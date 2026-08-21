@@ -166,7 +166,9 @@ the UI afterward. These are the credentials the wizard collects:
 - **Library ratings sync** — a nightly refresh of your whole library's ratings (default 03:00; change
   the hour, toggle it off, or run it now).
 - **Ratings** — choose which sources show per item and how the overall rating used for sorting is
-  calculated.
+  calculated. Rating-ranked sections also weigh each title's vote counts, so a 99% from 18 votes
+  doesn't outrank a 96% from 9,500; the **min votes** per source sets where that confidence
+  levels off. Displayed scores and badges are unaffected — this only changes ordering.
 - **Custom sections** — build the rows and heroes that appear on the app's Library page, either
   mirroring a Plex collection or filtering your library by ratings, dates, and genres. Give each a
   title, style (**Row** or **Hero**), and a spot on the page.

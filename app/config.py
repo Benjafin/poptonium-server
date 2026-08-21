@@ -129,7 +129,12 @@ DEFAULT_RATING_CONFIG = {
         "preset": "mdblist",  # or "custom"
         "weights": {"imdb": 1, "tomatoes": 1, "popcorn": 1, "tmdb": 1, "metacritic": 1},
         "vote_aware": True,
-        "min_votes": {"imdb": 1000, "tomatoes": 20, "popcorn": 50, "tmdb": 300, "metacritic": 10},
+        # Half-confidence point per source: a title with exactly `m` votes counts
+        # half as much as one with infinite votes. Calibrated against observed
+        # mdblist vote scales, which differ by orders of magnitude per source
+        # (IMDb runs 10k-500k, RT critic 40-500, Metacritic 8-65). Used both by
+        # the vote_aware custom formula and by ranking shrinkage (`rank_score`).
+        "min_votes": {"imdb": 50000, "tomatoes": 100, "popcorn": 800, "tmdb": 500, "metacritic": 25},
         # How to handle items mdblist gives no aggregate score for:
         # "average" = synthesize the MDbList score as the mean of available
         # sources; "zero" = leave it out (the app hides the chip).

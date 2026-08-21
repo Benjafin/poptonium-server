@@ -36,6 +36,8 @@ from .ratings import (
     effective_sources,
     fetch_and_store_ratings,
     get_rating_config,
+    rank_prior,
+    rank_score,
     ratings_for_tmdb,
 )
 
@@ -485,7 +487,8 @@ async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]
     # (episode_aware already ordered deduped by its effective date above.)
     if multi and not randomize and not rank_by_rating and not episode_aware:
         deduped = _sort_metas(deduped, sort)
-    items = await map_with_ratings(deduped)
+    rcfg = await get_rating_config()
+    items = await map_with_ratings(deduped, rcfg)
 
     popular_rank: dict = {}
     if trending:
@@ -498,7 +501,12 @@ async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]
     if randomize:
         random.shuffle(items)               # random pick from the queried pool
     elif rank_by_rating:
-        items.sort(key=lambda it: (it["rating"] if it["rating"] is not None else -1), reverse=True)
+        # Rank on the vote-shrunk rating so a 99% from 18 votes doesn't lead the
+        # shelf over a 96% from 9500. `rating_min` above still filters on the raw
+        # rating, and the badges the client renders are unaffected.
+        prior = await rank_prior()
+        items.sort(key=lambda it: rank_score(it["rating"], it.get("sources"), rcfg, prior),
+                   reverse=True)
     elif trending:
         items.sort(key=lambda it: popular_rank.get(it.get("tmdb_id"), 99999))  # by popularity
 
