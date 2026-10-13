@@ -158,12 +158,9 @@ CONFIG_KEYS = (
     "MDBLIST_API_KEY",
     "OVERSEERR_URL", "OVERSEERR_API_KEY",
     "OPENSUBTITLES_API_KEY", "OPENSUBTITLES_USERNAME", "OPENSUBTITLES_PASSWORD",
-    # Share links, all optional. PUBLIC_URL is this service's internet address (e.g.
-    # https://plex.example.com/poptonium); without it sharing is off. The app-link
-    # identities let a Poptonium build that claims this domain open links directly:
-    # IOS_APP_ID is "<team id>.<bundle id>", ANDROID_CERT_SHA256 a comma-separated
-    # list of signing-certificate fingerprints.
-    "PUBLIC_URL", "IOS_APP_ID", "ANDROID_CERT_SHA256",
+    # Share links (optional): this service's internet address, e.g.
+    # https://plex.example.com/poptonium. Without it sharing is off.
+    "PUBLIC_URL",
 )
 SECRET_KEYS = frozenset({
     "PLEX_TOKEN", "MDBLIST_API_KEY", "OVERSEERR_API_KEY",

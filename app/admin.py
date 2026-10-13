@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from . import scheduler as scheduler_mod
 from . import section_templates
-from .share import android_fingerprints, sharing_enabled
+from .share import sharing_enabled
 from .config import (
     CONFIG_KEYS,
     MDBLIST_BASE,
@@ -117,9 +117,7 @@ async def admin_status():
         "overseerr": {"configured": bool(settings.OVERSEERR_URL and settings.OVERSEERR_API_KEY), "healthy": overseerr_health, "url": settings.OVERSEERR_URL},
         "plex": {"configured": plex_configured(), "healthy": plex_health, "url": settings.PLEX_URL},
         "opensubtitles": {"configured": opensubtitles_configured(), "username": settings.OPENSUBTITLES_USERNAME},
-        "sharing": {"configured": sharing_enabled(), "healthy": None,
-                    "ios_app_links": bool(settings.IOS_APP_ID.strip()),
-                    "android_app_links": bool(android_fingerprints())},
+        "sharing": {"configured": sharing_enabled(), "healthy": None},
         "onboarding_dismissed": onboarding_dismissed,
         "config": settings.as_masked(),
     }
@@ -351,10 +349,7 @@ async def admin_config_test(body: ConfigTest):
             r = await http_client().get(f"{base}/capabilities", timeout=8)
             if r.status_code != 200 or (r.json() or {}).get("service") != "poptonium":
                 return {"ok": False, "detail": f"Poptonium isn't answering at {base} (HTTP {r.status_code})"}
-            apps = [name for name, key in (("iOS", "IOS_APP_ID"), ("Android", "ANDROID_CERT_SHA256"))
-                    if _test_value(v, key).strip()]
-            links = f"; app links for {' and '.join(apps)}" if apps else "; links open the web page"
-            return {"ok": True, "detail": f"Reachable{links}"}
+            return {"ok": True, "detail": "Reachable"}
 
         return {"ok": False, "detail": f"Unknown service '{body.service}'"}
     except Exception as e:

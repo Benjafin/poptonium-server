@@ -1345,10 +1345,6 @@ const INTEG_DEFS = [
 const SHARING_FIELDS = [
   {k:"PUBLIC_URL", label:"Public URL", ph:"https://plex.example.com/poptonium",
    help:"This server's internet address, as reached through your reverse proxy. Share links are built on it. Leave blank to turn sharing off."},
-  {k:"IOS_APP_ID", label:"iOS app ID (optional)", ph:"ABCDE12345.com.example.poptonium",
-   help:"Team ID and bundle ID of a Poptonium build that lists this domain under Associated Domains. Lets links open that app; without it they open the web page."},
-  {k:"ANDROID_CERT_SHA256", label:"Android signing SHA-256 (optional)", ph:"AB:CD:…, 12:34:…",
-   help:"Comma-separated certificate fingerprints of a Poptonium build that lists this domain for App Links (from Play Console, App integrity). Without them, links open the web page."},
 ];
 const CORE_FIELDS = {
   plex:[{k:"PLEX_URL",label:"Plex URL",ph:"http://plex:32400"},{k:"PLEX_TOKEN",label:"Token",secret:true}],

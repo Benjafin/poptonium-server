@@ -6,8 +6,7 @@ return ``<public base>/s/<slug>``. That page is public: it carries Open Graph an
 Twitter Card tags so the link unfurls with artwork, title and synopsis in chat apps
 and social media, and offers to open the item in Poptonium.
 
-Sharing is optional: it's off until PUBLIC_URL is set, and the Universal Links /
-App Links files are only served once their app identities are configured.
+Sharing is optional: it's off until PUBLIC_URL is set.
 
 Only items someone explicitly shared resolve, and only their title, synopsis and
 artwork are exposed. Artwork is served through ``/s/<slug>/<kind>.jpg`` so crawlers
@@ -21,10 +20,10 @@ import re
 import time
 import unicodedata
 from typing import Optional
-from urllib.parse import quote, urlencode, urlparse
+from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 
 from .client_auth import require_plex_user_token
@@ -40,8 +39,7 @@ APP_STORE_ID = "6779742766"
 PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=games.benja.poptonium"
 SITE_URL = "https://poptonium.app"
 
-# Android App Links name the app by package; the signing fingerprints and the iOS
-# app id come from settings, since they belong to whichever build claims the domain.
+# The Android app, for the share page's intent:// link into it.
 ANDROID_PACKAGE = "games.benja.poptonium"
 
 # Plex metadata for a shared page is reused briefly: a link posted to a group chat
@@ -133,11 +131,6 @@ def public_base() -> str:
     return settings.PUBLIC_URL.strip().rstrip("/")
 
 
-def android_fingerprints() -> list[str]:
-    return list(dict.fromkeys(
-        f.strip().upper() for f in (settings.ANDROID_CERT_SHA256 or "").split(",") if f.strip()))
-
-
 # ---------- create ----------
 
 @router.post("/share")
@@ -177,50 +170,6 @@ async def create_share(body: ShareRequest, token: str = Depends(require_plex_use
 
     title = _display_title(m)
     return {"slug": slug, "url": f"{public_base()}/s/{slug}", "title": title}
-
-
-# ---------- app links ----------
-
-def _share_prefixes() -> list[str]:
-    """Paths share pages live under: direct, behind the usual /poptonium proxy prefix,
-    and under PUBLIC_URL's path if that's something else."""
-    prefixes = ["/s", "/poptonium/s"]
-    custom = urlparse(public_base()).path.rstrip("/") + "/s"
-    if custom not in prefixes:
-        prefixes.append(custom)
-    return prefixes
-
-
-@router.get("/.well-known/apple-app-site-association")
-async def apple_app_site_association():
-    app_id = settings.IOS_APP_ID.strip()
-    if not (sharing_enabled() and app_id):
-        raise HTTPException(404, "Not found")
-    components = []
-    for prefix in _share_prefixes():
-        # Artwork stays in the browser; the page itself opens the app.
-        components.append({"/": f"{prefix}/*.jpg", "exclude": True})
-        components.append({"/": f"{prefix}/*"})
-    return JSONResponse({"applinks": {"details": [{"appIDs": [app_id], "components": components}]}})
-
-
-@router.get("/.well-known/assetlinks.json")
-async def android_asset_links():
-    fingerprints = android_fingerprints()
-    if not (sharing_enabled() and fingerprints):
-        raise HTTPException(404, "Not found")
-    return JSONResponse([{
-        "relation": ["delegate_permission/common.handle_all_urls"],
-        "target": {"namespace": "android_app", "package_name": ANDROID_PACKAGE,
-                   "sha256_cert_fingerprints": fingerprints},
-    }])
-
-
-@router.get("/share/{slug}")
-async def share_lookup(slug: str):
-    """What a share link points at, for an app that opened it as a Universal/App Link."""
-    rating_key, m = await _shared_item(slug)
-    return {"slug": slug, "rating_key": rating_key, "type": m.get("type"), "title": _display_title(m)}
 
 
 # ---------- public page ----------

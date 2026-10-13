@@ -119,7 +119,6 @@ async def test_sharing_off_without_public_url(monkeypatch):
         assert (await _share(c, "101")).status_code == 503
         # Existing links stop resolving too, rather than serving pages on an unset address.
         assert (await c.get("/s/amelie-2001")).status_code == 404
-        assert (await c.get("/share/amelie-2001")).status_code == 404
     from app.capabilities import capabilities
     assert (await capabilities())["share"] is False
 
@@ -232,54 +231,6 @@ async def test_page_without_machine_id_has_no_plex_button():
     assert "Open in Poptonium" in body
 
 
-# ---- universal / app links -----------------------------------------------------
-
-async def test_apple_app_site_association(monkeypatch):
-    monkeypatch.setitem(settings._values, "PUBLIC_URL", "https://x.example/media/pop")
-    monkeypatch.setitem(settings._values, "IOS_APP_ID", " RGYYV9YYGV.games.benja.poptonium ")
-    async with _client() as c:
-        r = await c.get("/.well-known/apple-app-site-association")
-    assert r.headers["content-type"] == "application/json"
-    detail = r.json()["applinks"]["details"][0]
-    assert detail["appIDs"] == ["RGYYV9YYGV.games.benja.poptonium"]
-    paths = [(comp["/"], comp.get("exclude", False)) for comp in detail["components"]]
-    assert ("/poptonium/s/*.jpg", True) in paths and ("/poptonium/s/*", False) in paths
-    assert ("/media/pop/s/*", False) in paths
-    # Each prefix's exclusion comes before its catch-all (first match wins).
-    assert paths.index(("/poptonium/s/*.jpg", True)) < paths.index(("/poptonium/s/*", False))
-
-
-async def test_asset_links_from_settings(monkeypatch):
-    monkeypatch.setitem(settings._values, "ANDROID_CERT_SHA256", " aa:bb , CC:DD,aa:bb")
-    async with _client() as c:
-        r = await c.get("/.well-known/assetlinks.json")
-    target = r.json()[0]["target"]
-    assert target["package_name"] == "games.benja.poptonium"
-    assert target["sha256_cert_fingerprints"] == ["AA:BB", "CC:DD"]
-
-
-async def test_app_link_files_absent_until_configured(monkeypatch):
-    async with _client() as c:
-        assert (await c.get("/.well-known/apple-app-site-association")).status_code == 404
-        assert (await c.get("/.well-known/assetlinks.json")).status_code == 404
-        # Configured app ids alone don't publish them while sharing itself is off.
-        monkeypatch.setitem(settings._values, "IOS_APP_ID", "T.b")
-        monkeypatch.setitem(settings._values, "PUBLIC_URL", "")
-        assert (await c.get("/.well-known/apple-app-site-association")).status_code == 404
-
-
-@respx.mock
-async def test_share_lookup_for_app_links():
-    _mock_items(EPISODE)
-    async with _client() as c:
-        await _share(c, "203")
-        r = await c.get("/poptonium/share/breaking-bad-s01e03")
-        missing = await c.get("/share/nope")
-    assert r.json() == {"slug": "breaking-bad-s01e03", "rating_key": "203", "type": "episode",
-                        "title": "Breaking Bad · S1 E3 · ...And the Bag's in the River"}
-    assert missing.status_code == 404
-
-
 # ---- details: ratings, cast, facts --------------------------------------------
 
 def test_page_details_from_plex_metadata():
@@ -331,7 +282,7 @@ async def test_admin_sharing_config_test():
     assert "https" in (await test({"PUBLIC_URL": "http://lan:3654"}))["detail"]
     respx.get("https://pub.example/poptonium/capabilities").mock(
         return_value=httpx.Response(200, json={"service": "poptonium"}))
-    ok = await test({"PUBLIC_URL": "https://pub.example/poptonium/", "IOS_APP_ID": "T.b"})
-    assert ok == {"ok": True, "detail": "Reachable; app links for iOS"}
+    ok = await test({"PUBLIC_URL": "https://pub.example/poptonium/"})
+    assert ok == {"ok": True, "detail": "Reachable"}
     respx.get("https://down.example/capabilities").mock(return_value=httpx.Response(502))
     assert (await test({"PUBLIC_URL": "https://down.example"}))["ok"] is False
