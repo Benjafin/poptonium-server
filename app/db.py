@@ -106,6 +106,15 @@ async def get_db() -> aiosqlite.Connection:
             PRIMARY KEY (user_id, series_key)
         )
     """)
+    # Public share links: a readable slug per shared library item. One slug per item,
+    # reused on every share, so a title always has the same link.
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS shares (
+            slug TEXT PRIMARY KEY,
+            rating_key TEXT NOT NULL UNIQUE,
+            created_at REAL
+        )
+    """)
     # Migrate: add sections.position for existing DBs (placement relative to the
     # built-in All/Movies/TV shelves).
     cursor = await db.execute("PRAGMA table_info(sections)")

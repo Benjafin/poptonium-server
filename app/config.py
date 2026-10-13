@@ -155,6 +155,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 # clear in the admin UI; the rest are masked (SECRET_KEYS).
 CONFIG_KEYS = (
     "PLEX_URL", "PLEX_TOKEN",
+    # Internet-facing base of this service (e.g. https://plex.example.com/poptonium),
+    # used to build share links. Empty = derive it from the incoming request.
+    "PUBLIC_URL",
     "MDBLIST_API_KEY",
     "OVERSEERR_URL", "OVERSEERR_API_KEY",
     "OPENSUBTITLES_API_KEY", "OPENSUBTITLES_USERNAME", "OPENSUBTITLES_PASSWORD",

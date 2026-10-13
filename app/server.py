@@ -37,6 +37,7 @@ from . import (
     popular,
     ratings,
     sections,
+    share,
     subtitle_prefs,
 )
 
@@ -63,6 +64,7 @@ for _module in (
     plugins,
     sections,
     subtitle_prefs,
+    share,
     opensubtitles,
     capabilities,
     auth,
