@@ -217,3 +217,40 @@ async def test_page_without_machine_id_has_no_plex_fallback():
 
 def test_js_literal_cannot_close_script():
     assert share._js("</script><b>") == '"\\u003c/script\\u003e\\u003cb\\u003e"'
+
+
+# ---- universal / app links -----------------------------------------------------
+
+async def test_apple_app_site_association(monkeypatch):
+    monkeypatch.setitem(settings._values, "PUBLIC_URL", "https://x.example/media/pop")
+    async with _client() as c:
+        r = await c.get("/.well-known/apple-app-site-association")
+    assert r.headers["content-type"] == "application/json"
+    detail = r.json()["applinks"]["details"][0]
+    assert detail["appIDs"] == ["RGYYV9YYGV.games.benja.poptonium"]
+    paths = [(comp["/"], comp.get("exclude", False)) for comp in detail["components"]]
+    assert ("/poptonium/s/*.jpg", True) in paths and ("/poptonium/s/*", False) in paths
+    assert ("/media/pop/s/*", False) in paths
+    # Each prefix's exclusion comes before its catch-all (first match wins).
+    assert paths.index(("/poptonium/s/*.jpg", True)) < paths.index(("/poptonium/s/*", False))
+
+
+async def test_asset_links_include_configured_play_key(monkeypatch):
+    monkeypatch.setitem(settings._values, "ANDROID_CERT_SHA256", " aa:bb , " + share.ANDROID_CERT_SHA256[0])
+    async with _client() as c:
+        r = await c.get("/.well-known/assetlinks.json")
+    target = r.json()[0]["target"]
+    assert target["package_name"] == "games.benja.poptonium"
+    assert target["sha256_cert_fingerprints"] == [*share.ANDROID_CERT_SHA256, "AA:BB"]
+
+
+@respx.mock
+async def test_share_lookup_for_app_links():
+    _mock_items(EPISODE)
+    async with _client() as c:
+        await _share(c, "203")
+        r = await c.get("/poptonium/share/breaking-bad-s01e03")
+        missing = await c.get("/share/nope")
+    assert r.json() == {"slug": "breaking-bad-s01e03", "rating_key": "203", "type": "episode",
+                        "title": "Breaking Bad · S1 E3 · ...And the Bag's in the River"}
+    assert missing.status_code == 404

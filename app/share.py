@@ -18,10 +18,10 @@ import re
 import time
 import unicodedata
 from typing import Optional
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel
 
 from .client_auth import require_plex_user_token
@@ -36,6 +36,18 @@ APP_STORE_URL = "https://apps.apple.com/app/poptonium-for-plex/id6779742766"
 APP_STORE_ID = "6779742766"
 PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=games.benja.poptonium"
 SITE_URL = "https://poptonium.app"
+
+# App identity for iOS Universal Links / Android App Links: a share link tapped on a
+# phone with Poptonium installed opens the app instead of this page. The apps list
+# the domains they claim; these files are the domain's side of that handshake.
+IOS_APP_ID = "RGYYV9YYGV.games.benja.poptonium"
+ANDROID_PACKAGE = "games.benja.poptonium"
+# Debug and upload keys. The Play app-signing key (Play Console > App integrity) goes
+# in the ANDROID_CERT_SHA256 setting, since Play-installed builds are signed with it.
+ANDROID_CERT_SHA256 = [
+    "AD:1A:D0:8B:88:DD:0F:3C:93:ED:C1:79:7A:FC:9E:9F:2E:0D:FA:42:40:47:66:D7:10:29:26:F5:F4:0C:3E:02",
+    "11:23:FC:F9:0A:B7:58:6B:68:BD:CD:18:37:EB:19:11:22:01:13:7B:61:BA:74:53:A7:70:3B:62:9E:52:5A:0E",
+]
 
 # Plex metadata for a shared page is reused briefly: a link posted to a group chat
 # gets hit by several unfurlers at once.
@@ -154,6 +166,47 @@ async def create_share(body: ShareRequest, request: Request, token: str = Depend
 
     title = _display_title(m)
     return {"slug": slug, "url": f"{public_base(request)}/s/{slug}", "title": title}
+
+
+# ---------- app links ----------
+
+def _share_prefixes() -> list[str]:
+    """Paths share pages live under: direct, behind the usual /poptonium proxy prefix,
+    and under PUBLIC_URL's path if that's something else."""
+    prefixes = ["/s", "/poptonium/s"]
+    if settings.PUBLIC_URL:
+        custom = urlparse(settings.PUBLIC_URL).path.rstrip("/") + "/s"
+        if custom not in prefixes:
+            prefixes.append(custom)
+    return prefixes
+
+
+@router.get("/.well-known/apple-app-site-association")
+async def apple_app_site_association():
+    components = []
+    for prefix in _share_prefixes():
+        # Artwork stays in the browser; the page itself opens the app.
+        components.append({"/": f"{prefix}/*.jpg", "exclude": True})
+        components.append({"/": f"{prefix}/*"})
+    return JSONResponse({"applinks": {"details": [{"appIDs": [IOS_APP_ID], "components": components}]}})
+
+
+@router.get("/.well-known/assetlinks.json")
+async def android_asset_links():
+    extra = [f.strip().upper() for f in (settings.ANDROID_CERT_SHA256 or "").split(",") if f.strip()]
+    fingerprints = list(dict.fromkeys(ANDROID_CERT_SHA256 + extra))
+    return JSONResponse([{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {"namespace": "android_app", "package_name": ANDROID_PACKAGE,
+                   "sha256_cert_fingerprints": fingerprints},
+    }])
+
+
+@router.get("/share/{slug}")
+async def share_lookup(slug: str):
+    """What a share link points at, for an app that opened it as a Universal/App Link."""
+    rating_key, m = await _shared_item(slug)
+    return {"slug": slug, "rating_key": rating_key, "type": m.get("type"), "title": _display_title(m)}
 
 
 # ---------- public page ----------

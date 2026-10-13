@@ -158,6 +158,9 @@ CONFIG_KEYS = (
     # Internet-facing base of this service (e.g. https://plex.example.com/poptonium),
     # used to build share links. Empty = derive it from the incoming request.
     "PUBLIC_URL",
+    # Extra SHA-256 signing-cert fingerprints (comma-separated) for Android App Links,
+    # e.g. the Play app-signing key.
+    "ANDROID_CERT_SHA256",
     "MDBLIST_API_KEY",
     "OVERSEERR_URL", "OVERSEERR_API_KEY",
     "OPENSUBTITLES_API_KEY", "OPENSUBTITLES_USERNAME", "OPENSUBTITLES_PASSWORD",
