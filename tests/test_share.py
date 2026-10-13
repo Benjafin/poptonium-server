@@ -181,3 +181,39 @@ async def test_image_proxies_plex_transcode_with_admin_token():
     assert second.url.params["url"] == "/library/metadata/200/thumb/1"
     assert poster.status_code == 200
     assert bad.status_code == 404
+
+
+# ---- open-in-app fallback ----------------------------------------------------
+
+@respx.mock
+async def test_page_falls_back_to_plex_when_app_missing():
+    _mock_items(MOVIE)
+    respx.get(f"{PLEX}/identity").mock(return_value=httpx.Response(
+        200, json={"MediaContainer": {"machineIdentifier": "abc123"}}))
+    async with _client() as c:
+        await _share(c, "101")
+        body = (await c.get("/s/amelie-2001")).text
+    plex_url = "https://app.plex.tv/desktop/#!/server/abc123/details?key=%2Flibrary%2Fmetadata%2F101"
+    # Visible Open in Plex button, and the scripted fallback for Open in Poptonium.
+    assert f'href="{plex_url}">Open in Plex</a>' in body
+    assert f'fallbackUrl = "{plex_url}"' in body
+    # Android: Chrome intent opens the app if installed, else the Plex URL.
+    assert ("intent://item/101#Intent;scheme=poptonium;package=games.benja.poptonium;"
+            "S.browser_fallback_url=https%3A%2F%2Fapp.plex.tv%2Fdesktop%2F%23%21%2Fserver%2Fabc123") in body
+
+
+@respx.mock
+async def test_page_without_machine_id_has_no_plex_fallback():
+    _mock_items(MOVIE)
+    respx.get(f"{PLEX}/identity").mock(return_value=httpx.Response(500))
+    async with _client() as c:
+        await _share(c, "101")
+        body = (await c.get("/s/amelie-2001")).text
+    assert "Open in Plex" not in body
+    assert "fallbackUrl = null" in body
+    # Android then falls back to the Play Store listing.
+    assert "S.browser_fallback_url=https%3A%2F%2Fplay.google.com" in body
+
+
+def test_js_literal_cannot_close_script():
+    assert share._js("</script><b>") == '"\\u003c/script\\u003e\\u003cb\\u003e"'

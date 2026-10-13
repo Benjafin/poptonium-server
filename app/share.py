@@ -13,11 +13,12 @@ so a shared user can't publish titles from libraries they don't have.
 """
 
 import html
+import json
 import re
 import time
 import unicodedata
 from typing import Optional
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
@@ -92,6 +93,17 @@ async def _caller_can_read(rating_key: str, token: str) -> bool:
         log.warning("Share access check for %s failed: %s", rating_key, e)
         return False
     return resp.status_code == 200
+
+
+async def plex_web_url(rating_key: str) -> Optional[str]:
+    """The item in Plex Web (app.plex.tv), which hands off to the Plex app where the
+    OS lets it. Needs the server's machine identifier; None when Plex won't say."""
+    data = await plex_get("/identity", cache_ttl=3600)
+    machine_id = ((data or {}).get("MediaContainer") or {}).get("machineIdentifier")
+    if not machine_id:
+        return None
+    key = quote(f"/library/metadata/{rating_key}", safe="")
+    return f"https://app.plex.tv/desktop/#!/server/{machine_id}/details?key={key}"
 
 
 def public_base(request: Request) -> str:
@@ -253,7 +265,8 @@ async def share_page(slug: str, request: Request):
     except HTTPException:
         return HTMLResponse(_not_found_page(), status_code=404)
     return HTMLResponse(
-        render_share_page(m, rating_key, f"{public_base(request)}/s/{slug}"),
+        render_share_page(m, rating_key, f"{public_base(request)}/s/{slug}",
+                          plex_url=await plex_web_url(rating_key)),
         headers={"Cache-Control": "public, max-age=300"},
     )
 
@@ -261,7 +274,15 @@ async def share_page(slug: str, request: Request):
 _OG_TYPES = {"movie": "video.movie", "show": "video.tv_show", "episode": "video.episode"}
 
 
-def render_share_page(m: dict, rating_key: str, page_url: str) -> str:
+def android_intent_url(rating_key: str, fallback_url: Optional[str]) -> str:
+    """Chrome on Android opens Poptonium when it's installed, else the fallback URL
+    (Plex), else the Play Store listing."""
+    fallback = fallback_url or PLAY_STORE_URL
+    return (f"intent://item/{rating_key}#Intent;scheme=poptonium;package=games.benja.poptonium;"
+            f"S.browser_fallback_url={quote(fallback, safe='')};end")
+
+
+def render_share_page(m: dict, rating_key: str, page_url: str, plex_url: Optional[str] = None) -> str:
     e = lambda s: html.escape(str(s or ""), quote=True)  # noqa: E731
     title = _display_title(m)
     meta_line = _meta_line(m)
@@ -270,6 +291,8 @@ def render_share_page(m: dict, rating_key: str, page_url: str) -> str:
     image_url = f"{page_url}/image.jpg"
     poster_url = f"{page_url}/poster.jpg"
     app_url = f"poptonium://item/{rating_key}"
+    intent_url = android_intent_url(rating_key, plex_url)
+    plex_button = f'<a class="btn" href="{e(plex_url)}">Open in Plex</a>' if plex_url else ""
     heading = m.get("grandparentTitle") if m.get("type") == "episode" else m.get("title")
     episode_line = ""
     if m.get("type") == "episode":
@@ -346,7 +369,8 @@ def render_share_page(m: dict, rating_key: str, page_url: str) -> str:
       {tagline}
       <p class="summary">{e(summary)}</p>
       <div class="actions">
-        <a class="btn primary" href="{e(app_url)}">Open in Poptonium</a>
+        <a class="btn primary" id="open-app" href="{e(app_url)}">Open in Poptonium</a>
+        {plex_button}
         <a class="btn" href="{APP_STORE_URL}">App Store</a>
         <a class="btn" href="{PLAY_STORE_URL}">Google Play</a>
       </div>
@@ -354,9 +378,36 @@ def render_share_page(m: dict, rating_key: str, page_url: str) -> str:
   </div>
 </section>
 <footer>Shared from a Plex library with <a href="{SITE_URL}">Poptonium</a></footer>
+<script>
+// A page can't ask whether an app is installed. Android: Chrome's intent URL opens
+// Poptonium or follows its fallback (Plex). Elsewhere: try the poptonium:// link and,
+// if the page is still in front shortly after, Poptonium isn't there, so go to Plex.
+(function () {{
+  var appUrl = {_js(app_url)}, intentUrl = {_js(intent_url)}, fallbackUrl = {_js(plex_url)};
+  document.getElementById("open-app").addEventListener("click", function (ev) {{
+    ev.preventDefault();
+    if (/Android/i.test(navigator.userAgent)) {{ location.href = intentUrl; return; }}
+    var left = false;
+    var leave = function () {{ left = true; }};
+    document.addEventListener("visibilitychange", function () {{ if (document.hidden) leave(); }});
+    window.addEventListener("pagehide", leave);
+    location.href = appUrl;
+    if (fallbackUrl) {{
+      setTimeout(function () {{ if (!left && !document.hidden) location.href = fallbackUrl; }}, 2000);
+    }}
+  }});
+}})();
+</script>
 </body>
 </html>
 """
+
+
+def _js(value: Optional[str]) -> str:
+    """A JS string literal safe inside a <script> block (or null)."""
+    if value is None:
+        return "null"
+    return json.dumps(value).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
 def _not_found_page() -> str:
