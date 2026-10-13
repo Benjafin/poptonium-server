@@ -183,40 +183,40 @@ async def test_image_proxies_plex_transcode_with_admin_token():
     assert bad.status_code == 404
 
 
-# ---- open-in-app fallback ----------------------------------------------------
+# ---- open buttons per platform -------------------------------------------------
 
 @respx.mock
-async def test_page_falls_back_to_plex_when_app_missing():
-    _mock_items(MOVIE)
+async def test_page_buttons_link_each_platform():
+    _mock_items(EPISODE)
     respx.get(f"{PLEX}/identity").mock(return_value=httpx.Response(
         200, json={"MediaContainer": {"machineIdentifier": "abc123"}}))
     async with _client() as c:
-        await _share(c, "101")
-        body = (await c.get("/s/amelie-2001")).text
-    plex_url = "https://app.plex.tv/desktop/#!/server/abc123/details?key=%2Flibrary%2Fmetadata%2F101"
-    # Visible Open in Plex button, and the scripted fallback for Open in Poptonium.
-    assert f'href="{plex_url}">Open in Plex</a>' in body
-    assert f'fallbackUrl = "{plex_url}"' in body
-    # Android: Chrome intent opens the app if installed, else the Plex URL.
-    assert ("intent://item/101#Intent;scheme=poptonium;package=games.benja.poptonium;"
-            "S.browser_fallback_url=https%3A%2F%2Fapp.plex.tv%2Fdesktop%2F%23%21%2Fserver%2Fabc123") in body
+        await _share(c, "203")
+        body = (await c.get("/s/breaking-bad-s01e03")).text
+    query = "metadataKey=%2Flibrary%2Fmetadata%2F203&amp;metadataType=4&amp;server=abc123"
+    # Plex: the app's preplay link on iOS, a Chrome intent for the Plex app on Android,
+    # Plex Web as the default (desktop).
+    assert f'data-ios="plex://preplay/?{query}"' in body
+    assert f'data-android="intent://preplay/?{query}#Intent;scheme=plex;package=com.plexapp.android;end"' in body
+    assert 'href="https://app.plex.tv/desktop/#!/server/abc123/details?key=%2Flibrary%2Fmetadata%2F203">Open in Plex' in body
+    # Poptonium: phones only; Android's intent has no automatic fallback.
+    assert ('data-platforms="ios android" data-android="intent://item/203#Intent;scheme=poptonium;'
+            'package=games.benja.poptonium;end" href="poptonium://item/203"') in body
+    assert "browser_fallback_url" not in body and "setTimeout" not in body
+    # One store per phone platform, both on desktop.
+    assert 'data-platforms="ios desktop" href="https://apps.apple.com' in body
+    assert 'data-platforms="android desktop" href="https://play.google.com' in body
 
 
 @respx.mock
-async def test_page_without_machine_id_has_no_plex_fallback():
+async def test_page_without_machine_id_has_no_plex_button():
     _mock_items(MOVIE)
     respx.get(f"{PLEX}/identity").mock(return_value=httpx.Response(500))
     async with _client() as c:
         await _share(c, "101")
         body = (await c.get("/s/amelie-2001")).text
     assert "Open in Plex" not in body
-    assert "fallbackUrl = null" in body
-    # Android then falls back to the Play Store listing.
-    assert "S.browser_fallback_url=https%3A%2F%2Fplay.google.com" in body
-
-
-def test_js_literal_cannot_close_script():
-    assert share._js("</script><b>") == '"\\u003c/script\\u003e\\u003cb\\u003e"'
+    assert "Open in Poptonium" in body
 
 
 # ---- universal / app links -----------------------------------------------------
