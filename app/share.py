@@ -41,9 +41,10 @@ SITE_URL = "https://poptonium.app"
 # the domains they claim; these files are the domain's side of that handshake.
 IOS_APP_ID = "RGYYV9YYGV.games.benja.poptonium"
 ANDROID_PACKAGE = "games.benja.poptonium"
-# Debug and upload keys. The Play app-signing key (Play Console > App integrity) goes
-# in the ANDROID_CERT_SHA256 setting, since Play-installed builds are signed with it.
+# Play app-signing key (what Play-installed builds carry), then the upload and debug
+# keys. The ANDROID_CERT_SHA256 setting can add more, e.g. after a key rotation.
 ANDROID_CERT_SHA256 = [
+    "0A:1A:85:61:DC:A6:BE:8E:14:36:D6:25:25:6C:42:8D:48:E4:6E:17:77:2F:28:5E:31:3C:7C:ED:47:99:B0:DC",
     "AD:1A:D0:8B:88:DD:0F:3C:93:ED:C1:79:7A:FC:9E:9F:2E:0D:FA:42:40:47:66:D7:10:29:26:F5:F4:0C:3E:02",
     "11:23:FC:F9:0A:B7:58:6B:68:BD:CD:18:37:EB:19:11:22:01:13:7B:61:BA:74:53:A7:70:3B:62:9E:52:5A:0E",
 ]
