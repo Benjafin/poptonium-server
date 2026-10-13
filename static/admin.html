@@ -591,6 +591,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   .setup-dots .dot{flex:1;height:4px;border-radius:999px;background:var(--line2);transition:background .2s;}
   .setup-dots .dot.on{background:var(--accent);}
   .setup-dots .dot.done{background:var(--ok);}
+  .field-help{display:block;margin-top:6px;font-size:12px;font-weight:400;line-height:1.45;color:var(--dim);}
   .setup-note{background:var(--accentSoft);color:var(--text);border:1px solid var(--line);
     border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5;margin-bottom:14px;}
   .setup-testrow{display:flex;align-items:center;gap:10px;margin-top:4px;}
@@ -1338,12 +1339,23 @@ const INTEG_DEFS = [
   {key:"mdblist",      name:"MDbList",       icon:"star"},
   {key:"overseerr",    name:"Overseerr",     icon:"search"},
   {key:"opensubtitles",name:"OpenSubtitles", icon:"sub"},
+  {key:"sharing",      name:"Share links",   icon:"globe", on:"Enabled", off:"Off"},
+];
+// Sharing fields, shared by the Integrations card and the setup wizard.
+const SHARING_FIELDS = [
+  {k:"PUBLIC_URL", label:"Public URL", ph:"https://plex.example.com/poptonium",
+   help:"This server's internet address, as reached through your reverse proxy. Share links are built on it. Leave blank to turn sharing off."},
+  {k:"IOS_APP_ID", label:"iOS app ID (optional)", ph:"ABCDE12345.com.example.poptonium",
+   help:"Team ID and bundle ID of a Poptonium build that lists this domain under Associated Domains. Lets links open that app; without it they open the web page."},
+  {k:"ANDROID_CERT_SHA256", label:"Android signing SHA-256 (optional)", ph:"AB:CD:…, 12:34:…",
+   help:"Comma-separated certificate fingerprints of a Poptonium build that lists this domain for App Links (from Play Console, App integrity). Without them, links open the web page."},
 ];
 const CORE_FIELDS = {
-  plex:[{k:"PLEX_URL",label:"Plex URL",ph:"http://plex:32400"},{k:"PLEX_TOKEN",label:"Token",secret:true},{k:"PUBLIC_URL",label:"Public URL for share links",ph:"https://plex.example.com/poptonium"},{k:"ANDROID_CERT_SHA256",label:"Android app signing SHA-256 (App Links)",ph:"AB:CD:…"}],
+  plex:[{k:"PLEX_URL",label:"Plex URL",ph:"http://plex:32400"},{k:"PLEX_TOKEN",label:"Token",secret:true}],
   mdblist:[{k:"MDBLIST_API_KEY",label:"API key",secret:true}],
   overseerr:[{k:"OVERSEERR_URL",label:"URL",ph:"http://overseerr:5055"},{k:"OVERSEERR_API_KEY",label:"API key",secret:true}],
   opensubtitles:[{k:"OPENSUBTITLES_API_KEY",label:"API key",secret:true},{k:"OPENSUBTITLES_USERNAME",label:"Username"},{k:"OPENSUBTITLES_PASSWORD",label:"Password",secret:true}],
+  sharing:SHARING_FIELDS,
 };
 function coreStatus(key, s){
   if(key==="mdblist") return {configured:s.ratings && s.ratings.configured, healthy:null};
@@ -1352,14 +1364,14 @@ function coreStatus(key, s){
 function coreIntegCard(def, s, cfg){
   const stt = coreStatus(def.key, s);
   const state = !stt.configured ? "" : (stt.healthy===false ? "down" : "on");
-  const label = !stt.configured ? "Not configured" : (stt.healthy===false ? "Unavailable" : "Connected");
+  const label = !stt.configured ? (def.off||"Not configured") : (stt.healthy===false ? "Unavailable" : (def.on||"Connected"));
   const fields = CORE_FIELDS[def.key].map(f=>{
     const isSet = cfg[f.k+"_set"];
     const val = f.secret ? "" : (cfg[f.k]||"");
     const ph = f.secret ? (isSet ? "•••••••• set — blank keeps it" : "not set") : (f.ph||"");
     return `<label class="auth-field" style="margin-bottom:10px"><span>${esc(f.label)}</span>
       <input id="ci-${def.key}-${f.k}" type="${f.secret?'password':'text'}" value="${esc(val)}"
-             placeholder="${esc(ph)}" autocomplete="off"></label>`;
+             placeholder="${esc(ph)}" autocomplete="off">${f.help?`<small class="field-help">${esc(f.help)}</small>`:""}</label>`;
   }).join("");
   return `<div class="card integ-card">
     <div class="integ-card-head">
@@ -2566,6 +2578,7 @@ const SETUP_STEPS = [
     {k:"OPENSUBTITLES_API_KEY", label:"API key", secret:true},
     {k:"OPENSUBTITLES_USERNAME", label:"Username"},
     {k:"OPENSUBTITLES_PASSWORD", label:"Password", secret:true}]},
+  {key:"sharing", name:"Share links", note:"Lets app users share a movie, show or episode as a public link with a rich preview. Optional: leave the public URL blank to keep sharing off.", fields:SHARING_FIELDS},
 ];
 let SETUP = {step:0, config:{}, tested:{}};
 
@@ -2589,7 +2602,7 @@ function renderSetupStep(){
   const fields = step.fields.map(f=>`
     <label class="auth-field"><span>${esc(f.label)}</span>
       <input id="su-${f.k}" type="${f.secret?'password':'text'}" placeholder="${esc(f.ph||'')}"
-             autocomplete="off" oninput="onSetupInput()"></label>`).join("");
+             autocomplete="off" oninput="onSetupInput()">${f.help?`<small class="field-help">${esc(f.help)}</small>`:""}</label>`).join("");
   $("setup-body").innerHTML = note + fields +
     `<div class="setup-testrow"><button class="btn ghost sm" type="button" onclick="setupTest()">Test connection</button>
        <span class="setup-res" id="setup-res"></span></div>`;

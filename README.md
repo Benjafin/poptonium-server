@@ -158,6 +158,8 @@ the UI afterward. These are the credentials the wizard collects:
 | `OVERSEERR_URL`, `OVERSEERR_API_KEY` | In-app search & requests | Overseerr request/search proxy. |
 | `OPENSUBTITLES_API_KEY` | Subtitle search/download | App API key from opensubtitles.com (Profile, API Consumers). |
 | `OPENSUBTITLES_USERNAME`, `OPENSUBTITLES_PASSWORD` | Subtitle downloads | Account whose daily download quota (20/day free) is used. |
+| `PUBLIC_URL` | Share links | This server's internet address through your reverse proxy (e.g. `https://plex.example.com/poptonium`). Blank keeps sharing off and hides the app's Share button. Share pages are public, so if your proxy geo-blocks or LAN-restricts, exempt `/poptonium/s/` (see the SWAG snippet). |
+| `IOS_APP_ID`, `ANDROID_CERT_SHA256` | Share links opening the app | Optional. The identity of a Poptonium build that claims your domain (`TEAMID.bundle.id`; comma-separated signing SHA-256s). They publish `/.well-known/apple-app-site-association` and `assetlinks.json`, which must be served at your domain root. Without them, links open the web page. |
 
 ## What the admin UI does
 

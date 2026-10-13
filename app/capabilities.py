@@ -16,6 +16,7 @@ from .config import (
 from .opensubtitles import opensubtitles_configured
 from .plex import plex_configured
 from .plugins import all_plugins, probe_plugin
+from .share import sharing_enabled
 
 router = APIRouter()
 
@@ -51,8 +52,9 @@ async def capabilities():
         "ratings": bool(settings.MDBLIST_API_KEY),
         # Per-series subtitle preference store (Plex has no per-show subtitle setting).
         "subtitle_prefs": True,
-        # Public share links with social previews (POST /share, GET /s/<slug>).
-        "share": plex_configured(),
+        # Public share links with social previews (POST /share, GET /s/<slug>); off
+        # until the admin sets the server's public URL.
+        "share": sharing_enabled(),
         # The Plex reverse-proxy (backend mode) is only usable if we can reach Plex.
         "plex_proxy": plex_configured(),
         "overseerr_configured": bool(settings.OVERSEERR_URL and settings.OVERSEERR_API_KEY),

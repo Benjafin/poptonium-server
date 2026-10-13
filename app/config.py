@@ -155,15 +155,15 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 # clear in the admin UI; the rest are masked (SECRET_KEYS).
 CONFIG_KEYS = (
     "PLEX_URL", "PLEX_TOKEN",
-    # Internet-facing base of this service (e.g. https://plex.example.com/poptonium),
-    # used to build share links. Empty = derive it from the incoming request.
-    "PUBLIC_URL",
-    # Extra SHA-256 signing-cert fingerprints (comma-separated) for Android App Links,
-    # e.g. the Play app-signing key.
-    "ANDROID_CERT_SHA256",
     "MDBLIST_API_KEY",
     "OVERSEERR_URL", "OVERSEERR_API_KEY",
     "OPENSUBTITLES_API_KEY", "OPENSUBTITLES_USERNAME", "OPENSUBTITLES_PASSWORD",
+    # Share links, all optional. PUBLIC_URL is this service's internet address (e.g.
+    # https://plex.example.com/poptonium); without it sharing is off. The app-link
+    # identities let a Poptonium build that claims this domain open links directly:
+    # IOS_APP_ID is "<team id>.<bundle id>", ANDROID_CERT_SHA256 a comma-separated
+    # list of signing-certificate fingerprints.
+    "PUBLIC_URL", "IOS_APP_ID", "ANDROID_CERT_SHA256",
 )
 SECRET_KEYS = frozenset({
     "PLEX_TOKEN", "MDBLIST_API_KEY", "OVERSEERR_API_KEY",

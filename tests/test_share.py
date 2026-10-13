@@ -37,6 +37,8 @@ def _client():
 @pytest.fixture(autouse=True)
 def _db_and_cache(tmp_path, monkeypatch):
     monkeypatch.setattr(_db, "DB_PATH", str(tmp_path / "share.db"))
+    # Sharing is off without a public URL; most tests exercise it switched on.
+    monkeypatch.setitem(settings._values, "PUBLIC_URL", "http://test")
     plex._plex_cache.clear()
     yield
 
@@ -99,16 +101,27 @@ async def test_slug_collision_gets_suffix():
 
 
 @respx.mock
-async def test_public_url_setting_and_proxy_prefix(monkeypatch):
+async def test_public_url_is_the_link_base(monkeypatch):
     _mock_items(SHOW)
+    monkeypatch.setitem(settings._values, "PUBLIC_URL", "https://share.example.com/pop/")
     async with _client() as c:
-        r = await c.post("/poptonium/share", json={"rating_key": "200"},
-                         headers={"X-Plex-Token": "user-token", "X-Forwarded-Proto": "https",
-                                  "X-Forwarded-Host": "plex.example.com"})
-        assert r.json()["url"] == "https://plex.example.com/poptonium/s/breaking-bad"
-        monkeypatch.setitem(settings._values, "PUBLIC_URL", "https://share.example.com/pop/")
-        r = await _share(c, "200")
-        assert r.json()["url"] == "https://share.example.com/pop/s/breaking-bad"
+        # Even when reached on another address (e.g. the LAN), links use the public one.
+        r = await c.post("/poptonium/share", json={"rating_key": "200"}, headers={"X-Plex-Token": "user-token"})
+    assert r.json()["url"] == "https://share.example.com/pop/s/breaking-bad"
+
+
+@respx.mock
+async def test_sharing_off_without_public_url(monkeypatch):
+    _mock_items(MOVIE)
+    async with _client() as c:
+        await _share(c, "101")
+        monkeypatch.setitem(settings._values, "PUBLIC_URL", "")
+        assert (await _share(c, "101")).status_code == 503
+        # Existing links stop resolving too, rather than serving pages on an unset address.
+        assert (await c.get("/s/amelie-2001")).status_code == 404
+        assert (await c.get("/share/amelie-2001")).status_code == 404
+    from app.capabilities import capabilities
+    assert (await capabilities())["share"] is False
 
 
 @respx.mock
@@ -223,6 +236,7 @@ async def test_page_without_machine_id_has_no_plex_button():
 
 async def test_apple_app_site_association(monkeypatch):
     monkeypatch.setitem(settings._values, "PUBLIC_URL", "https://x.example/media/pop")
+    monkeypatch.setitem(settings._values, "IOS_APP_ID", " RGYYV9YYGV.games.benja.poptonium ")
     async with _client() as c:
         r = await c.get("/.well-known/apple-app-site-association")
     assert r.headers["content-type"] == "application/json"
@@ -235,13 +249,23 @@ async def test_apple_app_site_association(monkeypatch):
     assert paths.index(("/poptonium/s/*.jpg", True)) < paths.index(("/poptonium/s/*", False))
 
 
-async def test_asset_links_include_configured_play_key(monkeypatch):
-    monkeypatch.setitem(settings._values, "ANDROID_CERT_SHA256", " aa:bb , " + share.ANDROID_CERT_SHA256[0])
+async def test_asset_links_from_settings(monkeypatch):
+    monkeypatch.setitem(settings._values, "ANDROID_CERT_SHA256", " aa:bb , CC:DD,aa:bb")
     async with _client() as c:
         r = await c.get("/.well-known/assetlinks.json")
     target = r.json()[0]["target"]
     assert target["package_name"] == "games.benja.poptonium"
-    assert target["sha256_cert_fingerprints"] == [*share.ANDROID_CERT_SHA256, "AA:BB"]
+    assert target["sha256_cert_fingerprints"] == ["AA:BB", "CC:DD"]
+
+
+async def test_app_link_files_absent_until_configured(monkeypatch):
+    async with _client() as c:
+        assert (await c.get("/.well-known/apple-app-site-association")).status_code == 404
+        assert (await c.get("/.well-known/assetlinks.json")).status_code == 404
+        # Configured app ids alone don't publish them while sharing itself is off.
+        monkeypatch.setitem(settings._values, "IOS_APP_ID", "T.b")
+        monkeypatch.setitem(settings._values, "PUBLIC_URL", "")
+        assert (await c.get("/.well-known/apple-app-site-association")).status_code == 404
 
 
 @respx.mock
@@ -295,3 +319,19 @@ async def test_episode_without_cast_uses_the_shows():
         await _share(c, "203")
         body = (await c.get("/s/breaking-bad-s01e03")).text
     assert "<strong>Bryan Cranston</strong><small>Walter White</small>" in body
+
+
+# ---- admin "Test" for the Share links card ---------------------------------------
+
+@respx.mock
+async def test_admin_sharing_config_test():
+    from app import admin
+    test = lambda values: admin.admin_config_test(admin.ConfigTest(service="sharing", values=values))  # noqa: E731
+    assert (await test({"PUBLIC_URL": ""}))["ok"] is False
+    assert "https" in (await test({"PUBLIC_URL": "http://lan:3654"}))["detail"]
+    respx.get("https://pub.example/poptonium/capabilities").mock(
+        return_value=httpx.Response(200, json={"service": "poptonium"}))
+    ok = await test({"PUBLIC_URL": "https://pub.example/poptonium/", "IOS_APP_ID": "T.b"})
+    assert ok == {"ok": True, "detail": "Reachable; app links for iOS"}
+    respx.get("https://down.example/capabilities").mock(return_value=httpx.Response(502))
+    assert (await test({"PUBLIC_URL": "https://down.example"}))["ok"] is False

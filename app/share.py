@@ -6,6 +6,9 @@ return ``<public base>/s/<slug>``. That page is public: it carries Open Graph an
 Twitter Card tags so the link unfurls with artwork, title and synopsis in chat apps
 and social media, and offers to open the item in Poptonium.
 
+Sharing is optional: it's off until PUBLIC_URL is set, and the Universal Links /
+App Links files are only served once their app identities are configured.
+
 Only items someone explicitly shared resolve, and only their title, synopsis and
 artwork are exposed. Artwork is served through ``/s/<slug>/<kind>.jpg`` so crawlers
 never see a Plex token. Creating a link requires a Plex token that can read the item,
@@ -20,7 +23,7 @@ import unicodedata
 from typing import Optional
 from urllib.parse import quote, urlencode, urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel
 
@@ -37,18 +40,9 @@ APP_STORE_ID = "6779742766"
 PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=games.benja.poptonium"
 SITE_URL = "https://poptonium.app"
 
-# App identity for iOS Universal Links / Android App Links: a share link tapped on a
-# phone with Poptonium installed opens the app instead of this page. The apps list
-# the domains they claim; these files are the domain's side of that handshake.
-IOS_APP_ID = "RGYYV9YYGV.games.benja.poptonium"
+# Android App Links name the app by package; the signing fingerprints and the iOS
+# app id come from settings, since they belong to whichever build claims the domain.
 ANDROID_PACKAGE = "games.benja.poptonium"
-# Play app-signing key (what Play-installed builds carry), then the upload and debug
-# keys. The ANDROID_CERT_SHA256 setting can add more, e.g. after a key rotation.
-ANDROID_CERT_SHA256 = [
-    "0A:1A:85:61:DC:A6:BE:8E:14:36:D6:25:25:6C:42:8D:48:E4:6E:17:77:2F:28:5E:31:3C:7C:ED:47:99:B0:DC",
-    "AD:1A:D0:8B:88:DD:0F:3C:93:ED:C1:79:7A:FC:9E:9F:2E:0D:FA:42:40:47:66:D7:10:29:26:F5:F4:0C:3E:02",
-    "11:23:FC:F9:0A:B7:58:6B:68:BD:CD:18:37:EB:19:11:22:01:13:7B:61:BA:74:53:A7:70:3B:62:9E:52:5A:0E",
-]
 
 # Plex metadata for a shared page is reused briefly: a link posted to a group chat
 # gets hit by several unfurlers at once.
@@ -129,21 +123,27 @@ def plex_links(rating_key: str, kind: str, machine_id: str) -> dict:
     }
 
 
-def public_base(request: Request) -> str:
-    """Internet-facing base of this service: the configured PUBLIC_URL, else what the
-    request came in on (honouring a reverse proxy's forwarded host/proto and prefix)."""
-    if settings.PUBLIC_URL:
-        return settings.PUBLIC_URL.rstrip("/")
-    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
-    prefix = "/poptonium" if request.url.path.startswith("/poptonium/") else ""
-    return f"{proto}://{host}{prefix}"
+def sharing_enabled() -> bool:
+    """Sharing needs Plex and a public address to build links on; a link derived from
+    the request would be a LAN address whenever the app is home."""
+    return plex_configured() and bool(settings.PUBLIC_URL.strip())
+
+
+def public_base() -> str:
+    return settings.PUBLIC_URL.strip().rstrip("/")
+
+
+def android_fingerprints() -> list[str]:
+    return list(dict.fromkeys(
+        f.strip().upper() for f in (settings.ANDROID_CERT_SHA256 or "").split(",") if f.strip()))
 
 
 # ---------- create ----------
 
 @router.post("/share")
-async def create_share(body: ShareRequest, request: Request, token: str = Depends(require_plex_user_token)):
+async def create_share(body: ShareRequest, token: str = Depends(require_plex_user_token)):
+    if not sharing_enabled():
+        raise HTTPException(503, "Sharing is off: set this server's public URL in the admin")
     rating_key = body.rating_key.strip()
     if not rating_key.isdigit():
         raise HTTPException(400, "rating_key must be a Plex ratingKey")
@@ -176,7 +176,7 @@ async def create_share(body: ShareRequest, request: Request, token: str = Depend
         await db.close()
 
     title = _display_title(m)
-    return {"slug": slug, "url": f"{public_base(request)}/s/{slug}", "title": title}
+    return {"slug": slug, "url": f"{public_base()}/s/{slug}", "title": title}
 
 
 # ---------- app links ----------
@@ -185,27 +185,30 @@ def _share_prefixes() -> list[str]:
     """Paths share pages live under: direct, behind the usual /poptonium proxy prefix,
     and under PUBLIC_URL's path if that's something else."""
     prefixes = ["/s", "/poptonium/s"]
-    if settings.PUBLIC_URL:
-        custom = urlparse(settings.PUBLIC_URL).path.rstrip("/") + "/s"
-        if custom not in prefixes:
-            prefixes.append(custom)
+    custom = urlparse(public_base()).path.rstrip("/") + "/s"
+    if custom not in prefixes:
+        prefixes.append(custom)
     return prefixes
 
 
 @router.get("/.well-known/apple-app-site-association")
 async def apple_app_site_association():
+    app_id = settings.IOS_APP_ID.strip()
+    if not (sharing_enabled() and app_id):
+        raise HTTPException(404, "Not found")
     components = []
     for prefix in _share_prefixes():
         # Artwork stays in the browser; the page itself opens the app.
         components.append({"/": f"{prefix}/*.jpg", "exclude": True})
         components.append({"/": f"{prefix}/*"})
-    return JSONResponse({"applinks": {"details": [{"appIDs": [IOS_APP_ID], "components": components}]}})
+    return JSONResponse({"applinks": {"details": [{"appIDs": [app_id], "components": components}]}})
 
 
 @router.get("/.well-known/assetlinks.json")
 async def android_asset_links():
-    extra = [f.strip().upper() for f in (settings.ANDROID_CERT_SHA256 or "").split(",") if f.strip()]
-    fingerprints = list(dict.fromkeys(ANDROID_CERT_SHA256 + extra))
+    fingerprints = android_fingerprints()
+    if not (sharing_enabled() and fingerprints):
+        raise HTTPException(404, "Not found")
     return JSONResponse([{
         "relation": ["delegate_permission/common.handle_all_urls"],
         "target": {"namespace": "android_app", "package_name": ANDROID_PACKAGE,
@@ -223,6 +226,8 @@ async def share_lookup(slug: str):
 # ---------- public page ----------
 
 async def _shared_item(slug: str) -> tuple[str, dict]:
+    if not sharing_enabled():
+        raise HTTPException(404, "Not found")
     db = await get_db()
     try:
         cursor = await db.execute("SELECT rating_key FROM shares WHERE slug = ?", (slug,))
@@ -323,7 +328,7 @@ async def share_image(slug: str, kind: str):
 
 
 @router.get("/s/{slug}", response_class=HTMLResponse)
-async def share_page(slug: str, request: Request):
+async def share_page(slug: str):
     try:
         rating_key, m = await _shared_item(slug)
     except HTTPException:
@@ -333,7 +338,7 @@ async def share_page(slug: str, request: Request):
     if m.get("type") == "episode" and not m.get("Role") and m.get("grandparentRatingKey"):
         show = await _item_metadata(str(m["grandparentRatingKey"]))
     return HTMLResponse(
-        render_share_page(m, rating_key, f"{public_base(request)}/s/{slug}",
+        render_share_page(m, rating_key, f"{public_base()}/s/{slug}",
                           machine_id=await plex_machine_id(),
                           cast=(show or m).get("Role") or []),
         headers={"Cache-Control": "public, max-age=300"},
