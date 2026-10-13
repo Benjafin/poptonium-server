@@ -254,3 +254,44 @@ async def test_share_lookup_for_app_links():
     assert r.json() == {"slug": "breaking-bad-s01e03", "rating_key": "203", "type": "episode",
                         "title": "Breaking Bad · S1 E3 · ...And the Bag's in the River"}
     assert missing.status_code == 404
+
+
+# ---- details: ratings, cast, facts --------------------------------------------
+
+def test_page_details_from_plex_metadata():
+    m = {**MOVIE, "contentRating": "R", "studio": "Studio <X>", "originallyAvailableAt": "2026-08-28",
+         "Rating": [{"image": "imdb://image.rating", "value": 7.0},
+                    {"image": "rottentomatoes://image.rating.ripe", "value": 8.8},
+                    {"image": "rottentomatoes://image.rating.spilled", "value": 4.1}],
+         "Director": [{"tag": "Jean-Pierre Jeunet"}],
+         "Writer": [{"tag": "Guillaume Laurant"}, {"tag": "Jean-Pierre Jeunet"}],
+         "Role": [{"tag": "Audrey Tautou", "role": "Amélie", "thumb": "https://metadata-static.plex.tv/a.jpg"},
+                  {"tag": "Mathieu Kassovitz", "thumb": "/library/metadata/101/person"}]}
+    body = share.render_share_page(m, "101", "https://x/s/amelie-2001")
+    assert '<span class="badge">R</span>' in body
+    assert "<b>7.0</b> IMDb" in body and "<b>88%</b> Rotten Tomatoes" in body and "<b>41%</b> Audience" in body
+    assert '<img src="https://metadata-static.plex.tv/a.jpg"' in body and "<small>Amélie</small>" in body
+    # A server-relative photo would need a token: initials instead.
+    assert "<span>MK</span>" in body and "/library/metadata/101/person" not in body
+    assert "<dt>Directed by</dt><dd>Jean-Pierre Jeunet</dd>" in body
+    assert "<dt>Written by</dt><dd>Guillaume Laurant, Jean-Pierre Jeunet</dd>" in body
+    assert "<dt>Released</dt><dd>28 Aug 2026</dd>" in body
+    assert "<dd>Studio &lt;X&gt;</dd>" in body
+
+
+def test_show_facts_and_no_empty_sections():
+    show = {**SHOW, "leafCount": 62, "studio": "AMC"}
+    body = share.render_share_page(show, "200", "https://x/s/breaking-bad")
+    assert "<dt>Seasons</dt><dd>5 (62 episodes)</dd>" in body and "<dt>Network</dt><dd>AMC</dd>" in body
+    assert "<h2>Cast</h2>" not in body and 'class="scores"' not in body
+
+
+@respx.mock
+async def test_episode_without_cast_uses_the_shows():
+    ep = {**EPISODE, "grandparentRatingKey": "200"}
+    show = {**SHOW, "Role": [{"tag": "Bryan Cranston", "role": "Walter White"}]}
+    _mock_items(ep, show)
+    async with _client() as c:
+        await _share(c, "203")
+        body = (await c.get("/s/breaking-bad-s01e03")).text
+    assert "<strong>Bryan Cranston</strong><small>Walter White</small>" in body

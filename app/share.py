@@ -12,6 +12,7 @@ never see a Plex token. Creating a link requires a Plex token that can read the 
 so a shared user can't publish titles from libraries they don't have.
 """
 
+import datetime
 import html
 import re
 import time
@@ -327,9 +328,14 @@ async def share_page(slug: str, request: Request):
         rating_key, m = await _shared_item(slug)
     except HTTPException:
         return HTMLResponse(_not_found_page(), status_code=404)
+    # Episodes often list only guest stars: show the series' cast when they list none.
+    show = None
+    if m.get("type") == "episode" and not m.get("Role") and m.get("grandparentRatingKey"):
+        show = await _item_metadata(str(m["grandparentRatingKey"]))
     return HTMLResponse(
         render_share_page(m, rating_key, f"{public_base(request)}/s/{slug}",
-                          machine_id=await plex_machine_id()),
+                          machine_id=await plex_machine_id(),
+                          cast=(show or m).get("Role") or []),
         headers={"Cache-Control": "public, max-age=300"},
     )
 
@@ -337,7 +343,67 @@ async def share_page(slug: str, request: Request):
 _OG_TYPES = {"movie": "video.movie", "show": "video.tv_show", "episode": "video.episode"}
 
 
-def render_share_page(m: dict, rating_key: str, page_url: str, machine_id: Optional[str] = None) -> str:
+# Plex's Rating entries, keyed by their image id: (label, how to show the 0-10 value).
+_RATING_SOURCES = [
+    ("imdb://image.rating", "IMDb", lambda v: f"{v:.1f}"),
+    ("rottentomatoes://image.rating.ripe", "Rotten Tomatoes", lambda v: f"{round(v * 10)}%"),
+    ("rottentomatoes://image.rating.rotten", "Rotten Tomatoes", lambda v: f"{round(v * 10)}%"),
+    ("rottentomatoes://image.rating.upright", "Audience", lambda v: f"{round(v * 10)}%"),
+    ("rottentomatoes://image.rating.spilled", "Audience", lambda v: f"{round(v * 10)}%"),
+    ("themoviedb://image.rating", "TMDB", lambda v: f"{round(v * 10)}%"),
+]
+_CAST_LIMIT = 15
+
+
+def _ratings(m: dict) -> list[tuple[str, str]]:
+    """(source, score) pairs from Plex's ratings, in a fixed order, one per source."""
+    by_image = {r.get("image"): r.get("value") for r in (m.get("Rating") or []) if r.get("value")}
+    out, seen = [], set()
+    for image, label, fmt in _RATING_SOURCES:
+        value = by_image.get(image)
+        if value and label not in seen:
+            seen.add(label)
+            out.append((label, fmt(float(value))))
+    return out
+
+
+def _release_date(value: Optional[str]) -> Optional[str]:
+    try:
+        d = datetime.date.fromisoformat(value or "")
+    except ValueError:
+        return None
+    return f"{d.day} {d.strftime('%b %Y')}"
+
+
+def _initials(name: str) -> str:
+    parts = [p for p in name.split() if p[:1].isalpha()]
+    return "".join(p[0] for p in parts[:2]).upper() or "?"
+
+
+def _facts(m: dict) -> list[tuple[str, str]]:
+    names = lambda key, n: ", ".join(t.get("tag") for t in (m.get(key) or [])[:n] if t.get("tag"))  # noqa: E731
+    facts = []
+    directors = names("Director", 3)
+    if directors:
+        facts.append(("Directed by" if len(m.get("Director") or []) == 1 else "Directors", directors))
+    if names("Writer", 3):
+        facts.append(("Written by", names("Writer", 3)))
+    if m.get("type") == "show":
+        seasons, episodes = m.get("childCount"), m.get("leafCount")
+        if seasons and episodes:
+            facts.append(("Seasons", f"{seasons} ({episodes} episodes)"))
+    released = _release_date(m.get("originallyAvailableAt"))
+    if released:
+        facts.append(("Aired" if m.get("type") == "episode" else "Released", released))
+    if m.get("studio"):
+        facts.append(("Network" if m.get("type") == "show" else "Studio", m["studio"]))
+    if names("Country", 2):
+        facts.append(("Country", names("Country", 2)))
+    return facts
+
+
+def render_share_page(m: dict, rating_key: str, page_url: str, machine_id: Optional[str] = None,
+                      cast: Optional[list] = None) -> str:
     e = lambda s: html.escape(str(s or ""), quote=True)  # noqa: E731
     title = _display_title(m)
     meta_line = _meta_line(m)
@@ -359,6 +425,27 @@ def render_share_page(m: dict, rating_key: str, page_url: str, machine_id: Optio
         code = f"Season {m.get('parentIndex')}, Episode {m.get('index')}" if m.get("index") is not None else ""
         episode_line = f'<p class="episode">{e(code)}{" · " if code else ""}{e(m.get("title"))}</p>'
     tagline = f'<p class="tagline">{e(m.get("tagline"))}</p>' if m.get("tagline") else ""
+    content_rating = (f'<span class="badge">{e(m.get("contentRating"))}</span>'
+                      if m.get("contentRating") else "")
+    ratings = "".join(f'<span class="score"><b>{e(score)}</b> {e(label)}</span>' for label, score in _ratings(m))
+    ratings_row = f'<div class="scores">{ratings}</div>' if ratings else ""
+
+    cast = cast if cast is not None else (m.get("Role") or [])
+    cast_cards = []
+    for person in cast[:_CAST_LIMIT]:
+        name = person.get("tag") or ""
+        if not name:
+            continue
+        thumb = person.get("thumb") or ""
+        # Only Plex's public people images; anything server-relative would need a token.
+        face = (f'<img src="{e(thumb)}" alt="" loading="lazy">' if thumb.startswith("https://")
+                else f'<span>{e(_initials(name))}</span>')
+        role = f'<small>{e(person.get("role"))}</small>' if person.get("role") else ""
+        cast_cards.append(f'<li><div class="face">{face}</div><strong>{e(name)}</strong>{role}</li>')
+    cast_section = (f'<section class="block"><h2>Cast</h2><ul class="cast">{"".join(cast_cards)}</ul></section>'
+                    if cast_cards else "")
+    facts = "".join(f"<div><dt>{e(k)}</dt><dd>{e(v)}</dd></div>" for k, v in _facts(m))
+    facts_section = f'<section class="block"><dl class="facts">{facts}</dl></section>' if facts else ""
 
     return f"""<!doctype html>
 <html lang="en">
@@ -390,7 +477,7 @@ def render_share_page(m: dict, rating_key: str, page_url: str, machine_id: Optio
   html,body {{ margin:0; background:var(--bg); color:var(--text);
     font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased; }}
-  .hero {{ position:relative; min-height:100vh; display:flex; align-items:flex-end; }}
+  .hero {{ position:relative; min-height:78vh; display:flex; align-items:flex-end; }}
   .backdrop {{ position:absolute; inset:0; background:url("{e(image_url)}") center/cover no-repeat; }}
   .backdrop::after {{ content:""; position:absolute; inset:0;
     background:linear-gradient(180deg,rgba(14,17,23,.35) 0%,rgba(14,17,23,.75) 45%,var(--bg) 85%); }}
@@ -408,6 +495,28 @@ def render_share_page(m: dict, rating_key: str, page_url: str, machine_id: Optio
     font-weight:700; font-size:15px; text-decoration:none; color:var(--text);
     background:rgba(255,255,255,.08); border:1px solid var(--hairline); }}
   .btn.primary {{ color:#fff; border:none; background:linear-gradient(135deg,var(--accent),var(--accent-deep)); }}
+  .badge {{ display:inline-block; margin-right:8px; padding:1px 7px; border:1px solid var(--faint); border-radius:5px;
+    font-size:12px; font-weight:700; color:var(--dim); vertical-align:1px; }}
+  .scores {{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px; }}
+  .score {{ padding:6px 11px; border-radius:10px; background:rgba(255,255,255,.07); border:1px solid var(--hairline);
+    font-size:13px; color:var(--dim); }}
+  .score b {{ color:var(--text); font-weight:800; margin-right:3px; }}
+  .block {{ position:relative; max-width:880px; margin:0 auto; padding:8px 24px 28px; }}
+  h2 {{ margin:0 0 14px; font-size:20px; font-weight:800; letter-spacing:-.2px; }}
+  .cast {{ list-style:none; margin:0 -24px; padding:0 24px 6px; display:flex; gap:16px; overflow-x:auto;
+    scroll-snap-type:x proximity; scroll-padding:0 24px; scrollbar-width:none; }}
+  .cast::-webkit-scrollbar {{ display:none; }}
+  .cast li {{ flex:none; width:96px; text-align:center; scroll-snap-align:start; }}
+  .face {{ width:84px; height:84px; margin:0 auto 8px; border-radius:50%; overflow:hidden; background:var(--bg3);
+    display:grid; place-items:center; border:1px solid var(--hairline); }}
+  .face img {{ width:100%; height:100%; object-fit:cover; }}
+  .face span {{ font-weight:800; font-size:24px; color:var(--dim); }}
+  .cast strong {{ display:block; font-size:13px; line-height:1.3; }}
+  .cast small {{ display:block; margin-top:2px; font-size:12px; line-height:1.3; color:var(--dim); }}
+  .facts {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px 24px; margin:0;
+    padding:20px; border-radius:16px; background:rgba(255,255,255,.04); border:1px solid var(--hairline); }}
+  .facts dt {{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--faint); }}
+  .facts dd {{ margin:3px 0 0; font-size:15px; }}
   footer {{ position:relative; text-align:center; padding:0 24px 32px; color:var(--faint); font-size:13px; }}
   footer a {{ color:var(--dim); }}
   @media (max-width:640px) {{
@@ -425,7 +534,8 @@ def render_share_page(m: dict, rating_key: str, page_url: str, machine_id: Optio
     <div>
       <h1>{e(heading)}</h1>
       {episode_line}
-      <p class="meta">{e(meta_line)}</p>
+      <p class="meta">{content_rating}{e(meta_line)}</p>
+      {ratings_row}
       {tagline}
       <p class="summary">{e(summary)}</p>
       <div class="actions">
@@ -437,6 +547,8 @@ def render_share_page(m: dict, rating_key: str, page_url: str, machine_id: Optio
     </div>
   </div>
 </section>
+{cast_section}
+{facts_section}
 <footer>Shared from a Plex library with <a href="{SITE_URL}">Poptonium</a></footer>
 <script>
 // Each button carries a link per platform; keep the ones for this device's platform
