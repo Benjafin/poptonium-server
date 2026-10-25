@@ -233,6 +233,52 @@ async def test_resolve_filter_tag_and_year_ops_in_query(isolate_db, monkeypatch)
     assert "addedAt>=" in q
 
 
+async def test_resolve_filter_released_within_days_per_library_type(isolate_db, monkeypatch):
+    """Movie libraries filter on the release date; show libraries on episode air
+    dates, so a long-running series with a fresh season still qualifies."""
+    sections = {"MediaContainer": {"Directory": [
+        {"key": "1", "title": "Films", "type": "movie"},
+        {"key": "2", "title": "TV", "type": "show"}]}}
+    fake = _Fake({"/library/sections/1/all": _container([]),
+                  "/library/sections/2/all": _container([]),
+                  "/library/sections": sections})
+    monkeypatch.setattr(sr, "plex_get", fake)
+    now = 1_760_000_000  # 2025-10-09 UTC
+    monkeypatch.setattr(sr.time, "time", lambda: now)
+
+    await sr._resolve_filter({"library_sections": ["1", "2"],
+                              "released_within_days": 365})
+
+    movie_q = next(c for c in fake.calls if c.startswith("/library/sections/1/all"))
+    show_q = next(c for c in fake.calls if c.startswith("/library/sections/2/all"))
+    assert movie_q.endswith("&originallyAvailableAt>=2024-10-09")
+    assert "episode." not in movie_q
+    assert show_q.endswith("&episode.originallyAvailableAt>=2024-10-09")
+
+
+async def test_resolve_filter_released_within_days_uses_media_type(isolate_db, monkeypatch):
+    """An explicit media type decides the clause without a library lookup."""
+    fake = _Fake({"/library/sections/2/all": _container([])})
+    monkeypatch.setattr(sr, "plex_get", fake)
+
+    await sr._resolve_filter({"library_section": "2", "media_type": "show",
+                              "released_within_days": 30})
+
+    assert len(fake.calls) == 1
+    assert "episode.originallyAvailableAt>=" in fake.calls[0]
+
+
+@pytest.mark.parametrize("off", [None, 0, "0", ""])
+async def test_resolve_filter_released_within_days_off(isolate_db, monkeypatch, off):
+    fake = _Fake({"/library/sections/1/all": _container([])})
+    monkeypatch.setattr(sr, "plex_get", fake)
+
+    await sr._resolve_filter({"library_section": "1", "released_within_days": off})
+
+    assert len(fake.calls) == 1
+    assert "originallyAvailableAt" not in fake.calls[0]
+
+
 async def test_resolve_filter_rating_min_postfilters(isolate_db, monkeypatch):
     await _seed_rating(1, "movie", {"mdblist": {"score": 90, "votes": None}})
     await _seed_rating(2, "movie", {"mdblist": {"score": 40, "votes": None}})

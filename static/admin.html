@@ -922,6 +922,11 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
           <div class="field"><label>Release year <span class="opt">(from / to)</span></label>
             <div style="display:flex;gap:10px"><input type="number" id="f-yafter" placeholder="1970" /><input type="number" id="f-ybefore" placeholder="2026" /></div></div>
         </div>
+        <div class="grid2">
+          <div class="field"><label>Released within</label>
+            <div class="slider-row"><input type="range" id="f-released" min="0" max="730" step="5" value="0"><span class="slider-val" id="f-released-v"><small>Any time</small></span></div>
+            <div class="hint">Rolling window on release date. Shows count if an episode aired in it.</div></div>
+        </div>
 
         <div class="field">
           <label style="display:flex;align-items:center;gap:9px;cursor:pointer">
@@ -2031,6 +2036,7 @@ async function openEditor(existing){
   setSlider("f-limit", cfg.limit||30);
   setSlider("f-rating-min", cfg.rating_min ?? 0);
   setSlider("f-added", cfg.added_within_days ?? 0);
+  setSlider("f-released", cfg.released_within_days ?? 0);
   $("f-yafter").value = cfg.released_after_year ?? "";
   $("f-ybefore").value = cfg.released_before_year ?? "";
   $("f-trending").checked = !!cfg.trending;
@@ -2088,6 +2094,7 @@ function wireSeg(segId, onChange){
 const SLIDER_FMT = {
   "f-rating-min": v=> v==0?'<small>Off</small>':v,
   "f-added": v=> v==0?'<small>Any time</small>':(v+' <small>days</small>'),
+  "f-released": v=> v==0?'<small>Any time</small>':(v+' <small>days</small>'),
   "f-limit": v=>v, "f-col-limit": v=>v, "f-query-limit": v=>v,
   "f-sessions-limit": v=> v==0?'<small>All</small>':v, "f-history-limit": v=>v,
   "rt-sync-hour": v=> String(v).padStart(2,'0')+':00',
@@ -2223,6 +2230,7 @@ function collectPayload(){
     cfg.limit=num($("f-limit").value)||30; cfg.query_limit=num($("f-query-limit").value)||100;
     cfg.rating_min=num($("f-rating-min").value)||null;
     cfg.added_within_days=num($("f-added").value)||null;
+    cfg.released_within_days=num($("f-released").value)||null;
     cfg.released_after_year=num($("f-yafter").value); cfg.released_before_year=num($("f-ybefore").value);
     DIMS.forEach(d=>{ const all=mergedTags(d); cfg[d]=all.filter(x=>STATE.selected[d].has(x.id)).map(x=>({id:x.id,title:x.title})); cfg[`${d}_mode`]=getDimMode(d); cfg[`${d}_pick`]=num($(`f-${d}-pick`).value)||1; });
     const gp=num($("f-genres-primary").value); cfg.genre_primary_count=gp==null?3:gp;

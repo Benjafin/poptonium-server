@@ -208,7 +208,7 @@ def _refs_library(*texts: Optional[str]) -> bool:
     return any(t and ("{library}" in t or "{libraries}" in t) for t in texts)
 
 
-_library_map_cache: dict = {"ts": 0.0, "map": {}}
+_library_map_cache: dict = {"ts": 0.0, "map": {}, "types": {}}
 
 
 async def _library_title_map() -> dict:
@@ -217,13 +217,21 @@ async def _library_title_map() -> dict:
         return _library_map_cache["map"]
     data = await plex_get("/library/sections")
     out: dict = {}
+    types: dict = {}
     for d in (data or {}).get("MediaContainer", {}).get("Directory", []):
         key = d.get("key")
         if key is not None:
             out[str(key)] = d.get("title") or ""
+            types[str(key)] = d.get("type") or ""
     if out:
-        _library_map_cache.update(ts=time.time() + 3600, map=out)
+        _library_map_cache.update(ts=time.time() + 3600, map=out, types=types)
     return out
+
+
+async def _library_type_map() -> dict:
+    """Plex library section key -> type ("movie" / "show"), shares the title cache."""
+    await _library_title_map()
+    return _library_map_cache.get("types") or {}
 
 
 async def _library_names(cfg: dict) -> list[str]:
@@ -402,6 +410,23 @@ async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]
         # wrongly drop a show whose series is old but just got a new episode.
         if not episode_aware:
             ops.append(f"addedAt>={added_cutoff}")
+    # Rolling release window ("released in the last N days"), a native Plex clause on
+    # the release date. For shows the show's own date is its premiere, which would
+    # drop an established series with a fresh season, so show libraries filter on
+    # `episode.originallyAvailableAt` instead: a show qualifies if any episode aired
+    # within the window. Applied per library since the clause depends on its type.
+    lib_ops: dict[str, list[str]] = {}
+    _rwd = cfg.get("released_within_days")
+    if _rwd not in (None, "", 0, "0"):
+        since = time.strftime("%Y-%m-%d", time.gmtime(time.time() - int(_rwd) * 86400))
+        if media_type in PLEX_TYPE:
+            lib_types = {lib: media_type for lib in libs}
+        else:
+            lib_types = await _library_type_map()
+        for lib in libs:
+            field = ("episode.originallyAvailableAt" if lib_types.get(lib) == "show"
+                     else "originallyAvailableAt")
+            lib_ops[lib] = [f"{field}>={since}"]
 
     # Score filtering uses the universal canonical rating (0-100), post-filtered here.
     rating_min = float(cfg["rating_min"]) if cfg.get("rating_min") not in (None, "") else None
@@ -436,7 +461,8 @@ async def _resolve_filter(cfg: dict, picks: Optional[dict] = None) -> list[dict]
     # Query each library and merge; lets a single section mix movies and shows.
     metas: list[dict] = []
     for lib in libs:
-        data = await plex_get(f"/library/sections/{lib}/all?{query}", cache_ttl=SECTION_CACHE_TTL)
+        lib_query = query + "".join("&" + op for op in lib_ops.get(lib, []))
+        data = await plex_get(f"/library/sections/{lib}/all?{lib_query}", cache_ttl=SECTION_CACHE_TTL)
         if data:
             metas.extend(data.get("MediaContainer", {}).get("Metadata", []))
     # De-dupe (a title could appear in more than one library) by ratingKey.

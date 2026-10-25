@@ -35,6 +35,7 @@ _FILTER_DEFAULTS = {
     "query_limit": 100,
     "rating_min": None,
     "added_within_days": None,
+    "released_within_days": None,
     "released_after_year": None,
     "released_before_year": None,
     "genres": [], "genres_mode": "pool", "genres_pick": 1,

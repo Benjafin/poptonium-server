@@ -54,6 +54,10 @@ A wholly new `type`/`style` with nothing an old app can draw just gets the highe
 floor. Old apps evaluate `min_app_version > ClientSchema.version` and drop the section
 (and its skeleton) rather than mis-render it. Nothing else is needed.
 
+Server-side-only query options (filters such as `added_within_days`,
+`released_within_days`, `rating_min`) need no floor: they only change *which* items a
+section returns, not their shape, so every client renders the result unchanged.
+
 ## Adding a new gated feature
 
 1. **Backend**: add the cfg flag → required version to `SECTION_FEATURE_MIN_VERSION`,
