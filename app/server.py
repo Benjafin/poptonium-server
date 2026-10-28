@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import APIRouter, Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from . import scheduler as scheduler_mod
 from .auth import require_admin
@@ -38,6 +39,7 @@ from . import (
     ratings,
     sections,
     share,
+    showcase,
     subtitle_prefs,
 )
 
@@ -49,6 +51,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="poptonium", lifespan=lifespan)
+
+# The Poptonium Cast receiver is a web page (https://poptonium.app/cast/) that reads
+# the showcase, ratings and sections from the browser; allow that origin (and local
+# dev servers for the receiver's dev page) to make simple GETs. No credentials: the
+# receiver authenticates to Plex with its own token, never with cookies here.
+CAST_RECEIVER_ORIGINS = r"^(https://(www\.)?poptonium\.app|http://(localhost|127\.0\.0\.1)(:\d+)?)$"
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=CAST_RECEIVER_ORIGINS,
+    allow_methods=["GET"],
+    allow_credentials=False,
+)
 
 # Aggregate every feature router into one, then mount it under each prefix.
 # Per-endpoint config mutations carry their own require_admin dependency
@@ -65,6 +79,7 @@ for _module in (
     sections,
     subtitle_prefs,
     share,
+    showcase,
     opensubtitles,
     capabilities,
     auth,

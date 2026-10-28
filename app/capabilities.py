@@ -47,7 +47,7 @@ async def capabilities():
         # Section-rendering contract version. Clients compare each section's
         # `min_app_version` against their own schema version and skip newer ones.
         "section_schema_version": SECTION_SCHEMA_VERSION,
-        "features": ["sections", "ratings", "popular", "overseerr", "opensubtitles", "plugins", "subtitle_prefs", "share"],
+        "features": ["sections", "ratings", "popular", "overseerr", "opensubtitles", "plugins", "subtitle_prefs", "share", "showcase"],
         "sections": True,
         "ratings": bool(settings.MDBLIST_API_KEY),
         # Per-series subtitle preference store (Plex has no per-show subtitle setting).
