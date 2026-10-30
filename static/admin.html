@@ -692,6 +692,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
     <button data-tab="integrations" onclick="switchTab('integrations')">Integrations</button>
     <button data-tab="sections" class="active" onclick="switchTab('sections')">Sections</button>
     <button data-tab="ratings" onclick="switchTab('ratings')">Ratings</button>
+    <button data-tab="cast" onclick="switchTab('cast')">Cast screen</button>
   </nav>
   <button class="btn ghost sm hidden" id="logout-btn" onclick="logout()" style="margin-left:auto">Sign out</button>
 </header>
@@ -735,6 +736,27 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
     </div>
     <div class="board">
       <div class="board-device" id="board-device"></div>
+    </div>
+  </section>
+
+  <!-- ════════ CAST SCREEN ════════ -->
+  <section class="tab" id="tab-cast">
+    <div class="page-head">
+      <div>
+        <div class="title">Cast screen</div>
+        <div class="sub">What the TV shows while nothing is playing on the Poptonium Cast receiver. Pick up to three rows, top to bottom: shelves drift sideways in alternating directions, a carousel shows one title at a time, and "Who's watching" only appears while someone is.</div>
+      </div>
+      <button class="btn" onclick="saveCastScreen()">Save</button>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="eyebrow">On the TV <span class="muted" id="cast-count"></span></div>
+        <div class="card"><table class="tbl"><tbody id="cast-rows"></tbody></table></div>
+      </div>
+      <div>
+        <div class="eyebrow">Available</div>
+        <div class="card"><table class="tbl"><tbody id="cast-available"></tbody></table></div>
+      </div>
     </div>
   </section>
 
@@ -1292,7 +1314,58 @@ function switchTab(name){
   if(name==="integrations") loadIntegrations();
   if(name==="sections") loadSections();
   if(name==="ratings") loadRatings();
+  if(name==="cast") loadCastScreen();
   try{ history.replaceState(null,"",`#${name}`); }catch(e){}
+}
+
+/* ============================================================
+   CAST SCREEN
+   ============================================================ */
+let CAST = {rows: [], available: [], max_rows: 3};
+const castKey = r => r.source === "section" ? `section:${r.id}` : r.source;
+function castKind(a){
+  if(!a) return "Missing";
+  if(a.type === "top_rated") return "Top rated · shelf";
+  if(a.type === "sessions") return "Who's watching";
+  if(a.type === "history") return "History · shelf";
+  return a.style === "hero" ? "Carousel" : "Shelf";
+}
+async function loadCastScreen(){
+  try{ CAST = await api("/cast/screen/config"); }catch(e){ toast("Cast screen: "+e.message, true); return; }
+  renderCastScreen();
+}
+function renderCastScreen(){
+  const byKey = Object.fromEntries(CAST.available.map(a => [castKey(a), a]));
+  const used = new Set(CAST.rows.map(castKey));
+  const heroUsed = CAST.rows.some(r => (byKey[castKey(r)]||{}).style === "hero");
+  $("cast-count").textContent = `${CAST.rows.length} of ${CAST.max_rows}`;
+  $("cast-rows").innerHTML = CAST.rows.length ? CAST.rows.map((r, i) => {
+    const a = byKey[castKey(r)];
+    return `<tr><td><b>${esc(a ? a.title : "Deleted section")}</b><div class="muted" style="font-size:12px">${castKind(a)}</div></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn ghost sm" ${i===0?"disabled":""} onclick="moveCastRow(${i},-1)">↑</button>
+        <button class="btn ghost sm" ${i===CAST.rows.length-1?"disabled":""} onclick="moveCastRow(${i},1)">↓</button>
+        <button class="btn ghost sm" onclick="removeCastRow(${i})">Remove</button></td></tr>`;
+  }).join("") : `<tr><td class="muted">Nothing picked: the TV shows top rated films and series.</td></tr>`;
+  $("cast-available").innerHTML = CAST.available.filter(a => !used.has(castKey(a))).map(a => {
+    const full = CAST.rows.length >= CAST.max_rows, hero = a.style === "hero" && heroUsed;
+    const why = full ? "TV is full" : hero ? "One carousel max" : "";
+    return `<tr><td><b>${esc(a.title)}</b><div class="muted" style="font-size:12px">${castKind(a)}${a.enabled===false?" · hidden in the app":""}</div></td>
+      <td style="text-align:right"><button class="btn ghost sm" ${why?"disabled title=\""+why+"\"":""} onclick='addCastRow(${JSON.stringify(castKey(a))})'>Add</button></td></tr>`;
+  }).join("");
+}
+function addCastRow(key){
+  const a = CAST.available.find(x => castKey(x) === key); if(!a) return;
+  CAST.rows.push(a.source === "section" ? {source: "section", id: a.id} : {source: a.source});
+  renderCastScreen();
+}
+function moveCastRow(i, d){ const r = CAST.rows.splice(i, 1)[0]; CAST.rows.splice(i + d, 0, r); renderCastScreen(); }
+function removeCastRow(i){ CAST.rows.splice(i, 1); renderCastScreen(); }
+async function saveCastScreen(){
+  try{
+    await api("/cast/screen/config", {method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify({rows: CAST.rows})});
+    toast("Cast screen saved");
+  }catch(e){ toast("Save failed: "+e.message, true); }
 }
 
 /* ============================================================
@@ -2694,7 +2767,7 @@ function startApp(){
   // initial tab: sections is the centrepiece; allow ?screen= or #hash
   const screen = params.get("screen") || (location.hash||"").replace("#","") || "sections";
   loadStatus();           // populates version + settings regardless
-  switchTab(["dashboard","integrations","sections","ratings"].includes(screen)?screen:"sections");
+  switchTab(["dashboard","integrations","sections","ratings","cast"].includes(screen)?screen:"sections");
 }
 
 (function init(){

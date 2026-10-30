@@ -31,6 +31,7 @@ from . import (
     admin,
     auth,
     capabilities,
+    cast_screen,
     opensubtitles,
     overseerr,
     plex_proxy,
@@ -39,7 +40,6 @@ from . import (
     ratings,
     sections,
     share,
-    showcase,
     subtitle_prefs,
 )
 
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="poptonium", lifespan=lifespan)
 
 # The Poptonium Cast receiver is a web page (https://poptonium.app/cast/) that reads
-# the showcase, ratings and sections from the browser; allow that origin (and local
+# its idle screen, ratings and sections from the browser; allow that origin (and local
 # dev servers for the receiver's dev page) to make simple GETs. No credentials: the
 # receiver authenticates to Plex with its own token, never with cookies here.
 CAST_RECEIVER_ORIGINS = r"^(https://(www\.)?poptonium\.app|http://(localhost|127\.0\.0\.1)(:\d+)?)$"
@@ -77,9 +77,9 @@ for _module in (
     plex_proxy,
     plugins,
     sections,
+    cast_screen,
     subtitle_prefs,
     share,
-    showcase,
     opensubtitles,
     capabilities,
     auth,
