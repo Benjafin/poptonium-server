@@ -72,7 +72,8 @@ async def test_defaults_to_top_rated_rows(monkeypatch):
     assert [r["key"] for r in body["rows"]] == ["top_movies", "top_shows"]
     assert body["rows"][0]["title"] == "Top rated films"
     assert body["display_groups"][0]["sources"] == ["imdb"]
-    assert "summary" not in body["rows"][0]["items"][0]  # shelves don't need it
+    # Every title can be in the spotlight, so every title carries its (trimmed) summary.
+    assert len(body["rows"][0]["items"][0]["summary"]) == 280
 
 
 async def test_configured_rows_resolve_in_order(monkeypatch):
@@ -80,10 +81,10 @@ async def test_configured_rows_resolve_in_order(monkeypatch):
     rows = (await _req("GET", "/cast/screen")).json()["rows"]
     assert [r["key"] for r in rows] == ["section:8", "section:10", "top_shows"]
     hero, sessions = rows[0], rows[1]
-    assert hero["style"] == "hero" and len(hero["items"]) == cast_screen.HERO_ITEMS
+    assert hero["style"] == "hero" and len(hero["items"]) == cast_screen.RAIL_ITEMS
     assert len(hero["items"][0]["summary"]) == 280 and "guid" not in hero["items"][0]
     assert sessions["type"] == "sessions" and sessions["items"][0]["user_title"] == "Abi"
-    assert len(sessions["items"]) == cast_screen.SHELF_ITEMS
+    assert len(sessions["items"]) == cast_screen.RAIL_ITEMS
 
 
 async def test_deleted_section_is_skipped(monkeypatch):
@@ -102,7 +103,7 @@ async def test_cached_briefly(monkeypatch):
 async def test_config_lists_choices_and_saves(monkeypatch):
     store, _ = _stub(monkeypatch)
     cfg = (await _req("GET", "/cast/screen/config")).json()
-    assert cfg["rows"] == cast_screen.DEFAULT_ROWS and cfg["max_rows"] == 3
+    assert cfg["rows"] == cast_screen.DEFAULT_ROWS and cfg["max_rows"] == cast_screen.MAX_ROWS
     assert [a.get("id", a["source"]) for a in cfg["available"]] == ["top_movies", "top_shows", 7, 8, 9, 10]
     assert cfg["available"][4]["enabled"] is False  # cast-only sections may be disabled in the app
     r = await _req("PUT", "/cast/screen/config", json={"rows": [{"source": "section", "id": 8}, {"source": "top_movies"}]})
@@ -110,12 +111,13 @@ async def test_config_lists_choices_and_saves(monkeypatch):
     assert json.loads(store["value"]) == {"rows": [{"source": "section", "id": 8}, {"source": "top_movies"}]}
 
 
-async def test_config_rejects_what_does_not_fit(monkeypatch):
+async def test_config_takes_any_mix_up_to_the_limit(monkeypatch):
     _stub(monkeypatch)
-    four = [{"source": "top_movies"}, {"source": "top_shows"}, {"source": "section", "id": 7}, {"source": "section", "id": 10}]
-    assert (await _req("PUT", "/cast/screen/config", json={"rows": four})).status_code == 400
-    two_heroes = [{"source": "section", "id": 8}, {"source": "section", "id": 9}]
-    assert (await _req("PUT", "/cast/screen/config", json={"rows": two_heroes})).status_code == 400
+    # Spotlight steps through sections one at a time: several carousels and shelves are fine.
+    mix = [{"source": "section", "id": 8}, {"source": "section", "id": 9}, {"source": "top_movies"}, {"source": "top_shows"}, {"source": "section", "id": 7}]
+    assert (await _req("PUT", "/cast/screen/config", json={"rows": mix})).status_code == 200
+    too_many = [{"source": "top_movies"}] * (cast_screen.MAX_ROWS + 1)
+    assert (await _req("PUT", "/cast/screen/config", json={"rows": too_many})).status_code == 400
     assert (await _req("PUT", "/cast/screen/config", json={"rows": [{"source": "section", "id": 42}]})).status_code == 400
 
 

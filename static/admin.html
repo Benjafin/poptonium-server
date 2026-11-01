@@ -744,7 +744,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
     <div class="page-head">
       <div>
         <div class="title">Cast screen</div>
-        <div class="sub">What the TV shows while nothing is playing on the Poptonium Cast receiver. Pick up to three rows, top to bottom: shelves drift sideways in alternating directions, a carousel shows one title at a time, and "Who's watching" only appears while someone is.</div>
+        <div class="sub">What the TV shows while nothing is playing on the Poptonium Cast receiver ("Spotlight"). One title at a time fills the screen with its backdrop, logo, ratings and summary, while a poster rail below steps through each section in this order, a few titles at a time. Shelves and carousels work the same here. "Who's watching" shows as a small live badge in the corner while someone is.</div>
       </div>
       <button class="btn" onclick="saveCastScreen()">Save</button>
     </div>
@@ -1321,13 +1321,13 @@ function switchTab(name){
 /* ============================================================
    CAST SCREEN
    ============================================================ */
-let CAST = {rows: [], available: [], max_rows: 3};
+let CAST = {rows: [], available: [], max_rows: 10};
 const castKey = r => r.source === "section" ? `section:${r.id}` : r.source;
 function castKind(a){
   if(!a) return "Missing";
-  if(a.type === "top_rated") return "Top rated · shelf";
-  if(a.type === "sessions") return "Who's watching";
-  if(a.type === "history") return "History · shelf";
+  if(a.type === "top_rated") return "Top rated";
+  if(a.type === "sessions") return "Who's watching · corner badge";
+  if(a.type === "history") return "History";
   return a.style === "hero" ? "Carousel" : "Shelf";
 }
 async function loadCastScreen(){
@@ -1337,7 +1337,6 @@ async function loadCastScreen(){
 function renderCastScreen(){
   const byKey = Object.fromEntries(CAST.available.map(a => [castKey(a), a]));
   const used = new Set(CAST.rows.map(castKey));
-  const heroUsed = CAST.rows.some(r => (byKey[castKey(r)]||{}).style === "hero");
   $("cast-count").textContent = `${CAST.rows.length} of ${CAST.max_rows}`;
   $("cast-rows").innerHTML = CAST.rows.length ? CAST.rows.map((r, i) => {
     const a = byKey[castKey(r)];
@@ -1348,8 +1347,7 @@ function renderCastScreen(){
         <button class="btn ghost sm" onclick="removeCastRow(${i})">Remove</button></td></tr>`;
   }).join("") : `<tr><td class="muted">Nothing picked: the TV shows top rated films and series.</td></tr>`;
   $("cast-available").innerHTML = CAST.available.filter(a => !used.has(castKey(a))).map(a => {
-    const full = CAST.rows.length >= CAST.max_rows, hero = a.style === "hero" && heroUsed;
-    const why = full ? "TV is full" : hero ? "One carousel max" : "";
+    const why = CAST.rows.length >= CAST.max_rows ? `At most ${CAST.max_rows} sections` : "";
     return `<tr><td><b>${esc(a.title)}</b><div class="muted" style="font-size:12px">${castKind(a)}${a.enabled===false?" · hidden in the app":""}</div></td>
       <td style="text-align:right"><button class="btn ghost sm" ${why?"disabled title=\""+why+"\"":""} onclick='addCastRow(${JSON.stringify(castKey(a))})'>Add</button></td></tr>`;
   }).join("");

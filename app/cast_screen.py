@@ -1,9 +1,10 @@
 """The Poptonium Cast receiver's idle screen (`/cast/screen`).
 
-An admin picks up to three rows for the TV, in order: any of the library sections (shelves,
-a hero carousel, "Who's watching", history) or the built-in top-rated films / series rows.
-The receiver fetches them resolved, with the configured rating badge groups, and renders
-shelves drifting in alternating directions, one hero carousel and live sessions.
+An admin picks the sections for the TV, in order: any of the library sections (shelves,
+carousels, "Who's watching", history) or the built-in top-rated films / series rows. The
+receiver fetches them resolved, with the configured rating badge groups, and shows them
+as "Spotlight": one title at a time over its backdrop, with a poster rail that steps
+through each section in turn. "Who's watching" becomes a live pill.
 
 `/cast/screen` is read-only and unauthenticated like `/sections/resolved`; artwork paths are
 Plex-relative and fetched by the receiver with its own token. The layout is edited through
@@ -26,9 +27,9 @@ from .section_resolve import _library_type_map, _resolve_filter, resolve_section
 router = APIRouter()
 
 CONFIG_KEY = "cast_screen"
-MAX_ROWS = 3
-SHELF_ITEMS = 24
-HERO_ITEMS = 8
+MAX_ROWS = 10
+# The receiver's rail shows at most this many titles per section.
+RAIL_ITEMS = 12
 # Sessions change by the second; everything else is cached briefly server-side anyway.
 CACHE_TTL = 30
 
@@ -78,26 +79,22 @@ async def get_config() -> list[dict]:
 
 def _validate(rows: list[CastRow], sections: dict[int, dict]) -> list[dict]:
     if len(rows) > MAX_ROWS:
-        raise HTTPException(400, f"At most {MAX_ROWS} rows fit on the TV")
-    heroes = 0
+        raise HTTPException(400, f"At most {MAX_ROWS} sections")
     out = []
     for r in rows:
         if r.source == "section":
             sec = sections.get(r.id or -1)
             if not sec:
                 raise HTTPException(400, f"Section {r.id} not found")
-            heroes += sec["style"] == "hero"
             out.append({"source": "section", "id": r.id})
         else:
             out.append({"source": r.source})
-    if heroes > 1:
-        raise HTTPException(400, "Only one carousel fits on the TV")
     return out
 
 
-def _trim(item: dict, hero: bool) -> dict:
+def _trim(item: dict) -> dict:
     out = {k: item.get(k) for k in _ITEM_FIELDS if item.get(k) is not None}
-    if hero and item.get("summary"):
+    if item.get("summary"):
         out["summary"] = item["summary"][:280]
     return out
 
@@ -115,17 +112,16 @@ async def _top_rated(media_type: str, limit: int) -> list[dict]:
 async def _resolve_row(row: dict, sections: dict[int, dict]) -> Optional[dict]:
     if row["source"] in BUILTINS:
         b = BUILTINS[row["source"]]
-        items = await _top_rated(b["media_type"], SHELF_ITEMS)
+        items = await _top_rated(b["media_type"], RAIL_ITEMS)
         return {"key": row["source"], "title": b["title"], "subtitle": None, "type": "top_rated", "style": "row",
-                "items": [_trim(it, False) for it in items]}
+                "items": [_trim(it) for it in items]}
     sec = sections.get(row.get("id") or -1)
     if not sec:
         return None  # deleted since it was picked
     resolved = await resolve_section(sec, client_schema="99.0.0")
-    hero = resolved["style"] == "hero"
-    items = resolved["items"][: HERO_ITEMS if hero else SHELF_ITEMS]
+    items = resolved["items"][:RAIL_ITEMS]
     return {"key": f"section:{sec['id']}", "title": resolved["title"], "subtitle": resolved.get("subtitle"),
-            "type": resolved["type"], "style": resolved["style"], "items": [_trim(it, hero) for it in items]}
+            "type": resolved["type"], "style": resolved["style"], "items": [_trim(it) for it in items]}
 
 
 @router.get("/cast/screen")
