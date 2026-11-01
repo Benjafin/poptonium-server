@@ -1,7 +1,9 @@
 """The Poptonium Cast receiver's idle screen (`/cast/screen`).
 
-An admin picks the sections for the TV, in order: any of the library sections (shelves,
-carousels, "Who's watching", history) or the built-in top-rated films / series rows. The
+By default the TV follows the app: every enabled section, in the order the app's home shows
+them. An admin can switch that off and pick the sections for the TV instead, in order: any
+of the library sections (shelves, carousels, "Who's watching", history) or the built-in
+top-rated films / series rows. The
 receiver fetches them resolved, with the configured rating badge groups, and shows them
 as "Spotlight": one title at a time over its backdrop, with a poster rail that steps
 through each section in turn. "Who's watching" becomes a live pill.
@@ -30,8 +32,13 @@ CONFIG_KEY = "cast_screen"
 MAX_ROWS = 10
 # The receiver's rail shows at most this many titles per section.
 RAIL_ITEMS = 12
-# Sessions change by the second; everything else is cached briefly server-side anyway.
+# Live sessions are re-resolved at most every 30 s. The other sections stay put for longer:
+# templated sections ("{genre} night") pick new tags on every resolve, and a new answer
+# makes the receiver rebuild the whole screen.
 CACHE_TTL = 30
+SECTIONS_TTL = 15 * 60
+# The app's home: custom sections anchored around its built-in library shelves.
+APP_POSITIONS = ["top", "after_all", "after_movies", "after_shows"]
 
 BUILTINS = {
     "top_movies": {"title": "Top rated films", "media_type": "movie"},
@@ -45,6 +52,7 @@ _ITEM_FIELDS = (
 )
 
 _cache: dict = {"expiry": 0.0, "key": None, "payload": None}
+_rows_cache: dict = {}  # json(row) -> (expiry, resolved row or None)
 
 
 class CastRow(BaseModel):
@@ -54,6 +62,8 @@ class CastRow(BaseModel):
 
 class CastScreenConfig(BaseModel):
     rows: list[CastRow]
+    # Show the app's own sections, in the app's order (the default); off = `rows`.
+    follow_app: bool = True
 
 
 async def _section_rows() -> dict[int, dict]:
@@ -65,16 +75,37 @@ async def _section_rows() -> dict[int, dict]:
         await db.close()
 
 
-async def get_config() -> list[dict]:
+async def get_settings() -> dict:
+    """Stored settings: `follow_app` (default on) and the custom `rows` (kept while off)."""
     raw = await meta_get(CONFIG_KEY)
+    out = {"follow_app": True, "rows": list(DEFAULT_ROWS)}
     if raw:
         try:
-            rows = json.loads(raw).get("rows")
-            if isinstance(rows, list):
-                return rows
+            stored = json.loads(raw)
+            if isinstance(stored.get("rows"), list):
+                out["rows"] = stored["rows"]
+            if isinstance(stored.get("follow_app"), bool):
+                out["follow_app"] = stored["follow_app"]
         except Exception:
             pass
-    return list(DEFAULT_ROWS)
+    return out
+
+
+def app_rows(sections: dict[int, dict]) -> list[dict]:
+    """The app's home order: enabled sections by position anchor, then sort order."""
+    def order(s: dict):
+        pos = s.get("position") or "after_shows"
+        return (APP_POSITIONS.index(pos) if pos in APP_POSITIONS else len(APP_POSITIONS), s["sort_order"], s["id"])
+    return [{"source": "section", "id": s["id"]} for s in sorted(sections.values(), key=order) if s["enabled"]]
+
+
+async def get_config() -> list[dict]:
+    """The rows the TV shows now."""
+    settings = await get_settings()
+    if settings["follow_app"]:
+        rows = app_rows(await _section_rows())
+        return rows or list(DEFAULT_ROWS)
+    return settings["rows"] or list(DEFAULT_ROWS)
 
 
 def _validate(rows: list[CastRow], sections: dict[int, dict]) -> list[dict]:
@@ -124,6 +155,22 @@ async def _resolve_row(row: dict, sections: dict[int, dict]) -> Optional[dict]:
             "type": resolved["type"], "style": resolved["style"], "items": [_trim(it) for it in items]}
 
 
+async def _cached_row(row: dict, sections: dict[int, dict]) -> Optional[dict]:
+    live = row.get("source") == "section" and (sections.get(row.get("id") or -1) or {}).get("type") == "sessions"
+    key = json.dumps(row, sort_keys=True)
+    hit = _rows_cache.get(key)
+    if hit and hit[0] > time.time():
+        return hit[1]
+    resolved = await _resolve_row(row, sections)
+    _rows_cache[key] = (time.time() + (CACHE_TTL if live else SECTIONS_TTL), resolved)
+    return resolved
+
+
+def _clear_caches() -> None:
+    _cache.update(expiry=0.0, key=None, payload=None)
+    _rows_cache.clear()
+
+
 @router.get("/cast/screen")
 async def cast_screen():
     rows = await get_config()
@@ -131,7 +178,7 @@ async def cast_screen():
     if _cache["key"] == key and _cache["expiry"] > time.time():
         return _cache["payload"]
     sections = await _section_rows()
-    resolved = await asyncio.gather(*[_resolve_row(r, sections) for r in rows])
+    resolved = await asyncio.gather(*[_cached_row(r, sections) for r in rows])
     rcfg = await get_rating_config()
     payload = {
         "rows": [r for r in resolved if r is not None],
@@ -148,12 +195,14 @@ async def get_cast_screen_config():
     available = [{"source": k, "title": v["title"], "type": "top_rated", "style": "row"} for k, v in BUILTINS.items()]
     available += [{"source": "section", "id": s["id"], "title": s["title"], "type": s["type"], "style": s["style"],
                    "enabled": bool(s["enabled"])} for s in sorted(sections.values(), key=lambda s: (s["sort_order"], s["id"]))]
-    return {"rows": await get_config(), "available": available, "max_rows": MAX_ROWS}
+    settings = await get_settings()
+    return {"follow_app": settings["follow_app"], "rows": settings["rows"], "app_rows": app_rows(sections),
+            "available": available, "max_rows": MAX_ROWS}
 
 
 @router.put("/cast/screen/config", dependencies=[Depends(require_admin)])
 async def put_cast_screen_config(p: CastScreenConfig):
     rows = _validate(p.rows, await _section_rows())
-    await meta_set(CONFIG_KEY, json.dumps({"rows": rows}))
-    _cache.update(expiry=0.0, key=None, payload=None)
-    return {"rows": rows}
+    await meta_set(CONFIG_KEY, json.dumps({"follow_app": p.follow_app, "rows": rows}))
+    _clear_caches()
+    return {"follow_app": p.follow_app, "rows": rows}

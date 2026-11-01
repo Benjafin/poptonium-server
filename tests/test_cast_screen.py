@@ -31,7 +31,7 @@ def _item(rk, rating=80.0, **extra):
 
 
 def _stub(monkeypatch, stored=None):
-    store = {"value": json.dumps({"rows": stored}) if stored is not None else None}
+    store = {"value": json.dumps({"follow_app": False, "rows": stored}) if stored is not None else None}
     calls = []
 
     async def meta_get(key):
@@ -57,7 +57,7 @@ def _stub(monkeypatch, stored=None):
     for name, fn in [("meta_get", meta_get), ("meta_set", meta_set), ("_section_rows", rows), ("resolve_section", resolve),
                      ("_top_rated", top), ("get_rating_config", rcfg)]:
         monkeypatch.setattr(cast_screen, name, fn)
-    cast_screen._cache.update(expiry=0.0, key=None, payload=None)
+    cast_screen._clear_caches()
     return store, calls
 
 
@@ -66,8 +66,16 @@ async def _req(method, path, **kw):
         return await ac.request(method, path, **kw)
 
 
-async def test_defaults_to_top_rated_rows(monkeypatch):
+async def test_defaults_to_the_apps_sections_in_app_order(monkeypatch):
     _stub(monkeypatch)
+    rows = (await _req("GET", "/cast/screen")).json()["rows"]
+    # Enabled sections only, by the app's position anchors then sort order.
+    assert [r["key"] for r in rows] == ["section:7", "section:8", "section:10"]
+    assert cast_screen.app_rows({**SECTIONS, 11: {**SECTIONS[7], "id": 11, "position": "top", "sort_order": 9}})[0] == {"source": "section", "id": 11}
+
+
+async def test_custom_rows_fall_back_to_top_rated(monkeypatch):
+    _stub(monkeypatch, [])
     body = (await _req("GET", "/cast/screen")).json()
     assert [r["key"] for r in body["rows"]] == ["top_movies", "top_shows"]
     assert body["rows"][0]["title"] == "Top rated films"
@@ -103,12 +111,15 @@ async def test_cached_briefly(monkeypatch):
 async def test_config_lists_choices_and_saves(monkeypatch):
     store, _ = _stub(monkeypatch)
     cfg = (await _req("GET", "/cast/screen/config")).json()
-    assert cfg["rows"] == cast_screen.DEFAULT_ROWS and cfg["max_rows"] == cast_screen.MAX_ROWS
+    assert cfg["follow_app"] is True and cfg["rows"] == cast_screen.DEFAULT_ROWS and cfg["max_rows"] == cast_screen.MAX_ROWS
+    assert cfg["app_rows"] == [{"source": "section", "id": 7}, {"source": "section", "id": 8}, {"source": "section", "id": 10}]
     assert [a.get("id", a["source"]) for a in cfg["available"]] == ["top_movies", "top_shows", 7, 8, 9, 10]
     assert cfg["available"][4]["enabled"] is False  # cast-only sections may be disabled in the app
-    r = await _req("PUT", "/cast/screen/config", json={"rows": [{"source": "section", "id": 8}, {"source": "top_movies"}]})
+    r = await _req("PUT", "/cast/screen/config", json={"follow_app": False, "rows": [{"source": "section", "id": 8}, {"source": "top_movies"}]})
     assert r.status_code == 200
-    assert json.loads(store["value"]) == {"rows": [{"source": "section", "id": 8}, {"source": "top_movies"}]}
+    assert json.loads(store["value"]) == {"follow_app": False, "rows": [{"source": "section", "id": 8}, {"source": "top_movies"}]}
+    rows = (await _req("GET", "/cast/screen")).json()["rows"]
+    assert [r["key"] for r in rows] == ["section:8", "top_movies"]
 
 
 async def test_config_takes_any_mix_up_to_the_limit(monkeypatch):
@@ -119,6 +130,18 @@ async def test_config_takes_any_mix_up_to_the_limit(monkeypatch):
     too_many = [{"source": "top_movies"}] * (cast_screen.MAX_ROWS + 1)
     assert (await _req("PUT", "/cast/screen/config", json={"rows": too_many})).status_code == 400
     assert (await _req("PUT", "/cast/screen/config", json={"rows": [{"source": "section", "id": 42}]})).status_code == 400
+
+
+async def test_sections_stay_put_while_sessions_refresh(monkeypatch):
+    _, calls = _stub(monkeypatch, [{"source": "section", "id": 7}, {"source": "section", "id": 10}])
+    await _req("GET", "/cast/screen")
+    assert sorted(calls) == [7, 10]
+    cast_screen._cache.update(expiry=0.0)  # the 30 s payload cache ran out
+    for key, (exp, row) in list(cast_screen._rows_cache.items()):
+        if '"id": 10' in key:
+            cast_screen._rows_cache[key] = (0.0, row)  # so did the live row's
+    await _req("GET", "/cast/screen")
+    assert sorted(calls) == [7, 10, 10]
 
 
 async def test_config_needs_admin():
