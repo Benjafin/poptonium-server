@@ -62,6 +62,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=CAST_RECEIVER_ORIGINS,
     allow_methods=["GET"],
+    expose_headers=["X-Subtitle-Source"],
     allow_credentials=False,
 )
 
