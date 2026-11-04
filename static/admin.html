@@ -6,7 +6,7 @@
 <title>Poptonium · admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Plus+Jakarta+Sans:wght@400..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
 /* ============================================================
    Poptonium admin redesign
@@ -16,19 +16,20 @@
 
 :root {
   /* defaults overwritten by [data-theme] */
-  --bg:#F4F2EC; --bg2:#FFFFFF; --bg3:#EAE6DC; --elev:#FFFFFF;
-  --line:rgba(28,24,16,.10); --line2:rgba(28,24,16,.18);
-  --text:#1A1712; --dim:rgba(26,23,18,.56); --faint:rgba(26,23,18,.34);
-  --accent:#0F7B62; --accentText:#FFFFFF; --accentSoft:rgba(15,123,98,.12);
-  --ok:#1F8A5B; --okSoft:rgba(31,138,91,.14);
-  --warn:#B7791F; --warnSoft:rgba(183,121,31,.14);
-  --bad:#C0492B; --badSoft:rgba(192,73,43,.12);
+  --bg:#F1F5F9; --bg2:#FFFFFF; --bg3:#E2E9F0; --elev:#FFFFFF;
+  --line:rgba(16,33,47,.11); --line2:rgba(16,33,47,.20);
+  /* text tones stay >= 4.5:1 on bg, bg2 and bg3; --faint is for secondary text, not decoration only */
+  --text:#10212F; --dim:rgba(16,33,47,.72); --faint:rgba(16,33,47,.65);
+  --accent:#1A64A3; --accentText:#FFFFFF; --accentSoft:rgba(30,111,176,.10);
+  --ok:#11704A; --okSoft:rgba(31,165,121,.13);
+  --warn:#7E520C; --warnSoft:rgba(224,165,44,.17);
+  --bad:#B3301E; --badSoft:rgba(236,75,64,.10);
   --r-card:18px; --r-chip:999px; --r-input:11px; --r-poster:12px;
-  --shadow-sm:0 1px 2px rgba(28,24,16,.06), 0 2px 8px rgba(28,24,16,.05);
-  --shadow-md:0 8px 22px rgba(40,34,22,.12);
-  --shadow-lg:0 24px 60px rgba(30,26,18,.22);
-  --font-body:-apple-system,"SF Pro Text",system-ui,sans-serif;
-  --font-display:"Newsreader",Georgia,serif;
+  --shadow-sm:0 1px 2px rgba(16,33,47,.06), 0 2px 8px rgba(16,33,47,.05);
+  --shadow-md:0 8px 22px rgba(16,33,47,.11);
+  --shadow-lg:0 24px 60px rgba(16,33,47,.20);
+  --font-body:"Plus Jakarta Sans",-apple-system,system-ui,sans-serif;
+  --font-display:"Bricolage Grotesque","Plus Jakarta Sans",system-ui,sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
   --nav-weight:500;
   color-scheme:light;
@@ -36,18 +37,19 @@
 
 /* ── Daylight (default, fresh warm light) ── */
 [data-theme="daylight"]{
-  --bg:#F4F2EC; --bg2:#FFFFFF; --bg3:#EAE6DC; --elev:#FFFFFF;
-  --line:rgba(28,24,16,.10); --line2:rgba(28,24,16,.18);
-  --text:#1A1712; --dim:rgba(26,23,18,.56); --faint:rgba(26,23,18,.34);
-  --accent:#0F7B62; --accentText:#FFFFFF; --accentSoft:rgba(15,123,98,.12);
-  --ok:#1F8A5B; --okSoft:rgba(31,138,91,.14);
-  --warn:#B7791F; --warnSoft:rgba(183,121,31,.14);
-  --bad:#C0492B; --badSoft:rgba(192,73,43,.12);
-  --font-display:"Newsreader",Georgia,serif;
-  --nav-weight:500; --r-card:18px; --r-poster:12px;
-  --shadow-sm:0 1px 2px rgba(28,24,16,.06), 0 2px 8px rgba(28,24,16,.05);
-  --shadow-md:0 10px 26px rgba(40,34,22,.13);
-  --shadow-lg:0 24px 60px rgba(30,26,18,.20);
+  --bg:#F1F5F9; --bg2:#FFFFFF; --bg3:#E2E9F0; --elev:#FFFFFF;
+  --line:rgba(16,33,47,.11); --line2:rgba(16,33,47,.20);
+  /* text tones stay >= 4.5:1 on bg, bg2 and bg3; --faint is for secondary text, not decoration only */
+  --text:#10212F; --dim:rgba(16,33,47,.72); --faint:rgba(16,33,47,.65);
+  --accent:#1A64A3; --accentText:#FFFFFF; --accentSoft:rgba(30,111,176,.10);
+  --ok:#11704A; --okSoft:rgba(31,165,121,.13);
+  --warn:#7E520C; --warnSoft:rgba(224,165,44,.17);
+  --bad:#B3301E; --badSoft:rgba(236,75,64,.10);
+  --font-display:"Bricolage Grotesque","Plus Jakarta Sans",system-ui,sans-serif;
+  --nav-weight:500; --r-card:16px; --r-poster:12px;
+  --shadow-sm:0 1px 2px rgba(16,33,47,.06), 0 2px 8px rgba(16,33,47,.05);
+  --shadow-md:0 10px 26px rgba(16,33,47,.12);
+  --shadow-lg:0 24px 60px rgba(16,33,47,.20);
   color-scheme:light;
 }
 
@@ -93,7 +95,10 @@ body{
   -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
 }
 a{color:var(--accent);text-decoration:none}
-::selection{background:var(--accentSoft)}
+::selection{background:color-mix(in srgb,var(--accent) 22%,transparent)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+h1,h2,h3{margin:0}
+.logo{width:30px; height:30px; flex:none; border-radius:8px; background:url("data:image/png;base64,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") center/cover; box-shadow:0 3px 9px rgba(28,80,122,.20)}
 button{font-family:inherit}
 .mono{font-family:var(--font-mono)}
 
@@ -114,18 +119,19 @@ button{font-family:inherit}
   font-weight:800; font-size:17px; box-shadow:var(--shadow-sm);
 }
 .brand h1{
-  font:700 17px/1 var(--font-body); margin:0; letter-spacing:-.3px;
+  font:650 18px/1 var(--font-display); margin:0; letter-spacing:-.3px;
   display:flex; align-items:center; gap:9px; white-space:nowrap;
 }
 .brand .ver{
   font:600 11px/1 var(--font-mono); color:var(--dim);
   background:var(--bg3); padding:4px 8px; border-radius:7px; letter-spacing:0;
 }
-.appbar nav{display:flex; gap:3px; margin-left:8px}
+.appbar nav{display:flex; gap:3px; margin-left:8px; min-width:0; overflow-x:auto; scrollbar-width:none}
+.appbar nav::-webkit-scrollbar{display:none}
 .appbar nav button{
   background:transparent; border:0; color:var(--dim);
   font-weight:600; font-size:14px; padding:9px 15px; border-radius:11px;
-  cursor:pointer; transition:.14s; letter-spacing:-.1px;
+  cursor:pointer; transition:.14s; letter-spacing:-.1px; white-space:nowrap; flex:none;
 }
 .appbar nav button:hover{color:var(--text); background:color-mix(in srgb,var(--text) 6%, transparent)}
 .appbar nav button.active{background:var(--accentSoft); color:var(--accent)}
@@ -148,14 +154,15 @@ main{max-width:1120px; margin:0 auto; padding:28px 26px 120px}
 
 /* section heads */
 .page-head{display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:20px}
-.page-head .title{font:700 26px/1.1 var(--font-display); letter-spacing:-.4px}
+.page-head .title{font:700 27px/1.1 var(--font-display); letter-spacing:-.5px; text-wrap:balance}
 [data-theme="daylight"] .page-head .title{font-weight:600}
-.page-head .sub{color:var(--dim); font-size:14px; margin-top:7px; max-width:62ch}
+.page-head .sub{color:var(--dim); font-size:14px; margin-top:7px; max-width:68ch; text-wrap:pretty}
 .eyebrow{
-  font:700 11px/1 var(--font-body); text-transform:uppercase; letter-spacing:.9px;
-  color:var(--faint); margin:30px 0 13px; display:flex; align-items:center; gap:9px;
+  font:650 16px/1.25 var(--font-display); letter-spacing:-.2px;
+  color:var(--text); margin:34px 0 12px; display:flex; align-items:center; gap:9px;
 }
 .eyebrow:first-child{margin-top:0}
+.eyebrow .muted{font:500 13px/1 var(--font-body); letter-spacing:0}
 .eyebrow .count{color:var(--accent); background:var(--accentSoft); padding:2px 8px; border-radius:999px; letter-spacing:0}
 
 /* ============ Buttons ============ */
@@ -207,12 +214,14 @@ main{max-width:1120px; margin:0 auto; padding:28px 26px 120px}
 .toggle{position:relative; width:44px; height:26px; flex:none; cursor:pointer}
 .toggle input{position:absolute; opacity:0; inset:0; margin:0; cursor:pointer}
 .toggle span{position:absolute; inset:0; background:var(--bg3); border:1px solid var(--line); border-radius:999px; transition:.18s}
-.toggle span::after{content:""; position:absolute; width:20px; height:20px; border-radius:50%; background:var(--faint); top:2px; left:2px; transition:.18s cubic-bezier(.4,1.3,.5,1)}
+.toggle span::after{content:""; position:absolute; width:20px; height:20px; border-radius:50%; background:var(--faint); top:2px; left:2px; transition:.18s cubic-bezier(.22,1,.36,1)}
 .toggle input:checked + span{background:var(--accentSoft); border-color:transparent}
 .toggle input:checked + span::after{background:var(--accent); left:20px}
+.toggle input:focus-visible + span{outline:2px solid var(--accent); outline-offset:2px}
 
 /* ============ Stat cards (dashboard) ============ */
-.stat-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px}
+.stat-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr)); gap:14px}
+@media (min-width:721px){ .stat-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))} }
 .stat{padding:18px 20px; display:flex; flex-direction:column; gap:3px; position:relative; overflow:hidden}
 .stat .ico{position:absolute; top:16px; right:16px; color:var(--faint); opacity:.7}
 .stat .ico svg{width:20px;height:20px}
@@ -243,8 +252,8 @@ main{max-width:1120px; margin:0 auto; padding:28px 26px 120px}
 .integ-card .integ.down{background:var(--badSoft); border-color:transparent}
 .integ-settings{margin-top:15px; padding-top:15px; border-top:1px solid var(--line)}
 .set-label{font-weight:650; font-size:13.5px}
-.chip .chip-x{margin-left:1px; opacity:.6; font-weight:700; cursor:pointer; padding:0 2px; line-height:1; font-size:14px}
-.chip .chip-x:hover{opacity:1}
+.chip .chip-x{display:inline-grid; place-items:center; min-width:24px; min-height:24px; margin:-6px -8px -6px 0; border-radius:50%; font-weight:700; cursor:pointer; line-height:1; font-size:15px}
+.chip .chip-x:hover{background:rgba(255,255,255,.18)}
 
 /* job + config tables */
 .tbl{width:100%; border-collapse:collapse}
@@ -305,7 +314,8 @@ main{max-width:1120px; margin:0 auto; padding:28px 26px 120px}
 }
 .block:hover{border-color:var(--line2); box-shadow:var(--shadow-md)}
 .block.dragging{opacity:.4}
-.block.disabled{opacity:.66}
+.block.disabled{background:var(--bg)}
+.block.disabled .heading .t{color:var(--dim)}
 /* the element that follows the cursor while dragging */
 .drag-clone{position:fixed; z-index:9999; margin:0; pointer-events:none;
   opacity:.97; border-radius:16px; transform:rotate(-1.2deg);
@@ -328,6 +338,11 @@ body.dragging-active{cursor:grabbing; user-select:none; -webkit-user-select:none
 .block .tags{display:flex; gap:6px; flex-wrap:wrap}
 .block .rowacts{display:flex; gap:5px; opacity:0; transition:.15s}
 .block:hover .rowacts, .block:focus-within .rowacts{opacity:1}
+@media (hover:none){ .block .rowacts{opacity:1} }
+/* when the actions don't fit beside the title, they drop below it instead of squeezing it */
+.block .top{flex-wrap:wrap}
+.block .heading{flex:1 1 170px}
+.block .controls{margin-left:auto}
 
 /* mini shelf preview (WYSIWYG) */
 .shelf-prev{display:flex; flex-direction:column; gap:7px}
@@ -365,13 +380,13 @@ body.dragging-active{cursor:grabbing; user-select:none; -webkit-user-select:none
 .field .opt{color:var(--faint); font-weight:500}
 .field .hint{color:var(--faint); font-size:12px; margin-top:6px; line-height:1.45}
 .field .hint code, .hint code{font-family:var(--font-mono); font-size:11.5px; background:var(--bg3); padding:1px 5px; border-radius:5px}
-input[type=text], input[type=number], select, textarea{
+input[type=text], input[type=url], input[type=password], input[type=number], select, textarea{
   width:100%; background:var(--bg2); border:1px solid var(--line); color:var(--text);
   padding:10px 12px; border-radius:var(--r-input); font:inherit; font-size:13.5px; transition:.14s;
 }
 [data-theme="aurora"] input, [data-theme="aurora"] select, [data-theme="aurora"] textarea,
 [data-theme="vivid"] input, [data-theme="vivid"] select, [data-theme="vivid"] textarea{background:var(--bg3)}
-input:focus, select:focus, textarea:focus{outline:0; border-color:var(--accent); box-shadow:0 0 0 3px var(--accentSoft)}
+input:focus, select:focus, textarea:focus{outline:0; border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), 0 0 0 4px var(--accentSoft)}
 input::placeholder{color:var(--faint)}
 select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px}
 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
@@ -401,10 +416,11 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
 .typecard .td{color:var(--dim); font-size:12px; margin-top:3px; line-height:1.4}
 
 /* token / chip pickers */
-.tokenfield{background:var(--bg2); border:1px solid var(--line); border-radius:var(--r-input); padding:9px}
+.tokenfield{background:var(--bg2); border:1px solid var(--line); border-radius:var(--r-input); padding:9px; transition:.14s}
+.tokenfield:focus-within{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
 [data-theme="aurora"] .tokenfield, [data-theme="vivid"] .tokenfield{background:var(--bg3)}
 .tokenfield .search{border:0; background:transparent; padding:4px 4px 8px; box-shadow:none}
-.tokenfield .search:focus{box-shadow:none}
+.tokenfield .search:focus{box-shadow:none; border:0}
 .chips{display:flex; flex-wrap:wrap; gap:7px; max-height:148px; overflow:auto}
 .chip{
   display:inline-flex; align-items:center; gap:5px; cursor:pointer;
@@ -414,9 +430,9 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
 [data-theme="aurora"] .chip, [data-theme="vivid"] .chip{background:var(--bg2)}
 .chip:hover{border-color:var(--line2); color:var(--text)}
 .chip.sel{background:var(--accent); color:var(--accentText); border-color:transparent}
-.chip.dim{opacity:.4}
-.chip .ct{opacity:.6; font-variant-numeric:tabular-nums; font-size:11px}
-.chip.sel .ct{opacity:.8}
+.chip.dim{color:var(--faint); background:transparent; border-style:dashed}
+.chip .ct{color:var(--faint); font-variant-numeric:tabular-nums; font-size:11px}
+.chip.sel .ct{color:inherit; opacity:.9}
 .selectedline{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:9px}
 
 /* slider */
@@ -447,7 +463,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
 
 /* ============ Info tooltip (label hint popover) ============ */
 .tip-ic{position:relative; display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; color:var(--faint); cursor:help; flex:none}
-.tip-ic:hover, .tip-ic:focus{color:var(--accent); outline:0}
+.tip-ic:hover, .tip-ic:focus{color:var(--accent)}
 .tip-ic svg{width:14px; height:14px}
 .tip-ic .tip{
   display:none; position:absolute; z-index:60; top:calc(100% + 9px); left:-8px; width:288px;
@@ -459,7 +475,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
 /* right-anchored variant for fields near the drawer's right edge (e.g. Subtitle) */
 .tip-ic.tip-right .tip{left:auto; right:-8px}
 .tip-ic.tip-right .tip::before{left:auto; right:11px}
-.tip h5{font:700 12px/1.2 var(--font-body); color:var(--text); margin:0 0 7px}
+.tip .th{font:700 12px/1.2 var(--font-body); color:var(--text); margin:0 0 7px}
 .tip p{font:500 11.5px/1.5 var(--font-body); color:var(--dim); margin:0 0 9px}
 .tip .tprow{display:flex; gap:9px; align-items:baseline; margin:5px 0}
 .tip code{font-family:var(--font-mono); font-size:11px; background:var(--bg3); color:var(--accent); padding:2px 6px; border-radius:6px; white-space:nowrap}
@@ -482,15 +498,16 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
 .rt-dropline{height:3px;background:var(--accent);border-radius:3px;margin:3px 0 14px;box-shadow:0 0 0 4px var(--accentSoft)}
 
 /* ============ Drawer (editor) ============ */
-.scrim-bg{position:fixed; inset:0; background:rgba(10,8,4,.46); backdrop-filter:blur(3px); opacity:0; pointer-events:none; transition:.22s; z-index:60}
+.scrim-bg{position:fixed; inset:0; background:rgba(9,20,30,.46); backdrop-filter:blur(3px); opacity:0; pointer-events:none; transition:.22s; z-index:60}
 .scrim-bg.open{opacity:1; pointer-events:auto}
 .drawer{
   position:fixed; top:0; right:0; bottom:0; width:min(560px,100vw);
   background:var(--bg); border-left:1px solid var(--line); box-shadow:var(--shadow-lg);
-  transform:translateX(100%); transition:transform .3s cubic-bezier(.32,.72,.3,1); z-index:61;
+  transform:translateX(100%); visibility:hidden;
+  transition:transform .3s cubic-bezier(.32,.72,.3,1), visibility 0s linear .3s; z-index:61;
   display:flex; flex-direction:column;
 }
-.drawer.open{transform:none}
+.drawer.open{transform:none; visibility:visible; transition:transform .3s cubic-bezier(.32,.72,.3,1)}
 .drawer-head{
   display:flex; align-items:center; gap:12px; padding:18px 22px; border-bottom:1px solid var(--line);
   position:sticky; top:0; background:var(--bg); z-index:2;
@@ -498,6 +515,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
 .drawer-head .dt{font:700 17px/1.1 var(--font-display); letter-spacing:-.2px}
 [data-theme="daylight"] .drawer-head .dt{font-weight:600}
 .drawer-head .ds{color:var(--dim); font-size:12.5px; margin-top:2px}
+.drawer-head .dt{display:block}
 .drawer-body{flex:1; overflow:auto; padding:22px; position:relative}
 .drawer-foot{
   display:flex; align-items:center; gap:10px; padding:16px 22px; border-top:1px solid var(--line);
@@ -525,7 +543,8 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   box-shadow:var(--shadow-lg); opacity:0; pointer-events:none; transition:.24s; z-index:99;
   display:flex; align-items:center; gap:10px;
 }
-.toast.show{opacity:1; transform:translateX(-50%)}
+.toast.show{opacity:1; transform:translateX(-50%); pointer-events:auto}
+.toast{max-width:min(560px, calc(100vw - 32px))}
 .toast.err{background:var(--bad); color:#fff}
 .toast svg{width:17px;height:17px}
 
@@ -536,6 +555,14 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   padding:8px; border-bottom:1px solid var(--line);
 }
 .demo-banner svg{width:15px;height:15px}
+
+/* inline notice: what's missing and where to fix it */
+.notice{display:flex; align-items:flex-start; gap:11px; padding:13px 15px; border-radius:12px;
+  background:var(--warnSoft); color:var(--text); font-size:13.5px; line-height:1.5; margin:0 0 18px}
+.notice svg{width:17px; height:17px; flex:none; margin-top:2px; color:var(--warn)}
+.notice b{font-weight:650}
+.notice a, .notice button.linklike{color:var(--accent); font-weight:650; text-decoration:underline; text-underline-offset:2px; background:none; border:0; padding:0; font:inherit; cursor:pointer}
+.integ-settings .auth-field input{max-width:560px}
 
 /* empty state */
 .empty{
@@ -557,7 +584,39 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
 @media (max-width:720px){
   .grid2,.grid3,.typecards{grid-template-columns:1fr}
   main{padding:20px 16px 100px}
-  .appbar{flex-wrap:wrap; gap:10px}
+  .page-head{flex-wrap:wrap; align-items:flex-start}
+  .page-head .title{font-size:24px}
+  .board{padding:10px; border-radius:18px}
+  .drawer-head, .drawer-body{padding-left:16px; padding-right:16px}
+  .drawer-foot{padding:12px 16px; flex-wrap:wrap}
+  .drawer-foot .spacer{display:none}
+  .drawer-foot .btn.subtle{flex:1 0 100%; order:3}
+  .drawer-foot .btn.ghost, .drawer-foot .btn:not(.subtle){flex:1}
+  .tbl td{padding:12px 10px}
+  .stat{padding:15px 16px}
+  .stat .n{font-size:28px}
+  .actions-row > span[style*="flex:1"]{display:none}
+}
+/* narrow screens: brand + sign out on one row, the tab nav scrolls on its own row */
+@media (max-width:900px){
+  .appbar{flex-wrap:wrap; gap:8px 10px; padding:12px 16px 8px}
+  .appbar nav{order:3; flex:1 0 100%; margin:0 -16px; padding:0 12px}
+}
+/* coarse pointers: give every control a comfortable hit area */
+@media (pointer:coarse){
+  .appbar nav button{min-height:44px}
+  .btn{min-height:44px}
+  .btn.sm, .btn.xs{min-height:40px}
+  .iconbtn{width:40px; height:40px}
+  .seg button{min-height:40px}
+  .chip{padding:9px 13px}
+  .tip-ic{width:28px; height:28px}
+}
+@media (prefers-reduced-motion:reduce){
+  *, *::before, *::after{transition-duration:.01ms !important; scroll-behavior:auto !important}
+  .drawer, .drawer.open{transition:visibility 0s !important}
+  .spinner{animation-duration:2.4s}
+  .btn:hover{transform:none}
 }
 
 </style>
@@ -567,21 +626,24 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
 <!-- ════════ Auth gate (setup / login) ════════ -->
 <style>
   .auth-gate{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;
-    padding:24px;background:var(--bg);background:radial-gradient(120% 120% at 50% 0%, var(--bg2), var(--bg));}
+    padding:24px;background:var(--bg);background:radial-gradient(120% 90% at 50% 0%, #DCEBF8, var(--bg));overflow:auto;}
   .auth-card{width:100%;max-width:380px;background:var(--elev);border:1px solid var(--line);
-    border-radius:18px;padding:28px 26px;box-shadow:0 24px 60px rgba(0,0,0,.18);}
+    border-radius:18px;padding:28px 26px;box-shadow:0 24px 60px rgba(16,33,47,.14);margin:auto;}
   .auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
   .auth-brand .glyph{width:40px;height:40px;border-radius:11px;background:var(--accent);color:var(--accentText);
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;}
-  .auth-brand h2{margin:0;font-size:18px;color:var(--text);}
+  .auth-brand h2{margin:0;font:650 21px/1.2 var(--font-display);letter-spacing:-.3px;color:var(--text);}
+  .auth-brand .logo{width:44px;height:44px;border-radius:11px;}
+  .auth-mark{display:flex;align-items:center;gap:9px;margin:0 0 22px;font:650 15px/1 var(--font-display);color:var(--text);}
+  .auth-mark .logo{width:28px;height:28px;border-radius:7px;}
   .auth-brand p{margin:2px 0 0;font-size:13px;}
   .auth-field{display:block;margin-bottom:14px;}
   .auth-field span{display:block;font-size:12px;font-weight:650;color:var(--dim);margin-bottom:6px;}
   .auth-field input{width:100%;box-sizing:border-box;padding:11px 13px;border:1px solid var(--line2);
     border-radius:11px;background:var(--bg2);color:var(--text);font-size:14px;outline:none;}
-  .auth-field input:focus{border-color:var(--accent);}
+  .auth-field input:focus{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent), 0 0 0 4px var(--accentSoft);}
   .auth-err{margin:0 0 14px;padding:9px 12px;border-radius:10px;font-size:13px;
-    background:rgba(220,60,50,.12);color:#d6473b;border:1px solid rgba(220,60,50,.25);}
+    background:var(--badSoft);color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 25%,transparent);}
   #auth-submit{width:100%;justify-content:center;padding:12px;font-size:14.5px;}
   .muted{color:var(--dim);}
 
@@ -594,18 +656,21 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   .field-help{display:block;margin-top:6px;font-size:12px;font-weight:400;line-height:1.45;color:var(--dim);}
   .setup-note{background:var(--accentSoft);color:var(--text);border:1px solid var(--line);
     border-radius:11px;padding:10px 12px;font-size:12.5px;line-height:1.5;margin-bottom:14px;}
-  .setup-testrow{display:flex;align-items:center;gap:10px;margin-top:4px;}
-  .setup-res{font-size:12.5px;font-weight:600;}
+  .setup-testrow{display:flex;flex-direction:column;align-items:flex-start;gap:9px;margin-top:4px;}
+  .setup-res:empty{display:none;}
+  .setup-res{font-size:12.5px;font-weight:600;line-height:1.4;}
+  .setup-res .fix{display:block;font-weight:500;color:var(--dim);margin-top:3px;}
+  .setup-hint{font-size:12.5px;color:var(--dim);margin:12px 0 0;text-align:right;}
   .setup-res.ok{color:var(--ok);} .setup-res.bad{color:var(--bad);}
   .setup-foot{display:flex;align-items:center;gap:8px;margin-top:22px;}
 
   /* Starter-sections wizard (centered modal over a scrim) */
   .wiz-overlay{position:fixed;inset:0;z-index:1900;display:flex;align-items:center;justify-content:center;
-    padding:24px;background:rgba(10,8,4,.46);backdrop-filter:blur(3px);}
+    padding:24px;background:rgba(9,20,30,.46);backdrop-filter:blur(3px);}
   .wiz-card{width:100%;max-width:520px;max-height:86vh;display:flex;flex-direction:column;
     background:var(--elev);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow-lg);overflow:hidden;}
   .wiz-head{display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line);}
-  .wiz-head .title{font-size:16px;font-weight:700;flex:1;}
+  .wiz-head .title{font:650 18px/1.2 var(--font-display);letter-spacing:-.2px;flex:1;}
   .wiz-body{padding:18px 20px;overflow:auto;}
   .wiz-foot{display:flex;align-items:center;gap:8px;padding:14px 20px;border-top:1px solid var(--line);}
   .wiz-choices{display:grid;gap:12px;margin-top:8px;}
@@ -616,8 +681,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   .wiz-choice .ic{color:var(--accent);margin-bottom:8px;}
   .wiz-choice .t{font-weight:700;font-size:14.5px;}
   .wiz-choice .d{color:var(--dim);font-size:12.5px;margin-top:3px;line-height:1.45;}
-  .wiz-sub{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
-    color:var(--dim);margin:16px 0 8px;}
+  .wiz-sub{font-size:13px;font-weight:650;color:var(--text);margin:16px 0 8px;}
   .wiz-sub:first-child{margin-top:0;}
   .wiz-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);
     border-radius:10px;margin-bottom:6px;background:var(--bg2);}
@@ -637,7 +701,8 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   .board-empty .t{font-weight:650;color:var(--dim);font-size:13.5px;}
 </style>
 <div id="auth-gate" class="auth-gate hidden">
-  <form class="auth-card" id="auth-form" onsubmit="return submitAuth(event)">
+  <form class="auth-card" id="auth-form" onsubmit="return submitAuth(event)" aria-labelledby="auth-title">
+    <div class="auth-mark"><span class="logo" aria-hidden="true"></span>Poptonium</div>
     <div class="auth-brand">
       <div><h2 id="auth-title">Sign in</h2><p class="muted" id="auth-sub">Enter your admin credentials.</p></div>
     </div>
@@ -647,7 +712,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
       <input id="auth-pass" type="password" autocomplete="current-password" required></label>
     <label class="auth-field hidden" id="auth-confirm-field"><span>Confirm password</span>
       <input id="auth-confirm" type="password" autocomplete="new-password"></label>
-    <div class="auth-err hidden" id="auth-err"></div>
+    <div class="auth-err hidden" id="auth-err" role="alert"></div>
     <button class="btn" type="submit" id="auth-submit">Sign in</button>
   </form>
 </div>
@@ -655,7 +720,8 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
 <!-- Setup wizard: connect + test integrations. Blocks the dashboard until Plex
      is reachable; the other steps are optional and skippable. -->
 <div id="setup-gate" class="auth-gate hidden">
-  <div class="auth-card setup-card">
+  <div class="auth-card setup-card" role="region" aria-labelledby="setup-title">
+    <div class="auth-mark"><span class="logo" aria-hidden="true"></span>Poptonium</div>
     <div class="auth-brand">
       <div><h2 id="setup-title">Set up Poptonium</h2><p class="muted" id="setup-sub"></p></div>
     </div>
@@ -667,15 +733,16 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
       <button class="btn subtle" type="button" id="setup-skip" onclick="setupSkip()">Skip</button>
       <button class="btn" type="button" id="setup-next" onclick="setupNext()">Next</button>
     </div>
+    <p class="setup-hint hidden" id="setup-hint">Test the connection to continue.</p>
   </div>
 </div>
 
 <!-- Starter-sections wizard: shown on a brand-new, empty Library board. -->
 <div id="wiz" class="wiz-overlay hidden">
-  <div class="wiz-card">
+  <div class="wiz-card" role="dialog" aria-modal="true" aria-labelledby="wiz-title">
     <div class="wiz-head">
-      <div class="title" id="wiz-title">Set up your Library</div>
-      <button class="iconbtn" type="button" onclick="closeWizard()">✕</button>
+      <h2 class="title" id="wiz-title">Set up your Library</h2>
+      <button class="iconbtn" type="button" onclick="closeWizard()" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     </div>
     <div class="wiz-body" id="wiz-body"></div>
     <div class="wiz-foot" id="wiz-foot"></div>
@@ -685,9 +752,10 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
 <!-- ════════ App bar ════════ -->
 <header class="appbar">
   <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
     <h1>Poptonium <span class="ver" id="ver">·</span></h1>
   </div>
-  <nav>
+  <nav aria-label="Admin sections">
     <button data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>
     <button data-tab="integrations" onclick="switchTab('integrations')">Integrations</button>
     <button data-tab="sections" class="active" onclick="switchTab('sections')">Sections</button>
@@ -701,26 +769,28 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   <!-- ════════ DASHBOARD ════════ -->
   <section class="tab" id="tab-dashboard">
     <div class="page-head">
-      <div><div class="title">Overview</div><div class="sub">Health of the cache, integrations and scheduled jobs.</div></div>
+      <div><h2 class="title">Overview</h2><div class="sub">Connections, cached data and scheduled jobs at a glance.</div></div>
     </div>
-    <div class="eyebrow">Integrations</div>
+    <h3 class="eyebrow">Integrations</h3>
     <div class="integ-row" id="integrations"></div>
-    <div class="eyebrow">Caches</div>
+    <div id="dash-notice"></div>
+    <h3 class="eyebrow">Caches</h3>
     <div class="stat-grid" id="cache-cards"></div>
     <div class="actions-row">
-      <button class="btn" onclick="runAction('library_ratings')">↻ Sync library ratings</button>
-      <button class="btn ghost" onclick="runAction('popular_refresh')">↻ Refresh popular</button>
-      <button class="btn ghost" onclick="clearCache('ratings')">Clear ratings cache</button>
-      <button class="btn ghost" onclick="clearCache('popular')">Clear popular cache</button>
+      <button class="btn" id="dash-sync" onclick="runAction('library_ratings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg> Sync library ratings</button>
+      <button class="btn ghost" onclick="runAction('popular_refresh')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg> Refresh popular</button>
+      <span style="flex:1"></span>
+      <button class="btn subtle" onclick="clearCache('ratings')">Clear ratings cache</button>
+      <button class="btn subtle" onclick="clearCache('popular')">Clear popular cache</button>
     </div>
-    <div class="eyebrow">Scheduled jobs</div>
+    <h3 class="eyebrow">Scheduled jobs</h3>
     <div class="card"><table class="tbl"><tbody id="jobs"></tbody></table></div>
   </section>
 
   <!-- ════════ INTEGRATIONS ════════ -->
   <section class="tab" id="tab-integrations">
     <div class="page-head">
-      <div><div class="title">Integrations</div><div class="sub">Connection health and per-service settings.</div></div>
+      <div><h2 class="title">Integrations</h2><div class="sub">Plex is required. The others are optional and each unlocks a feature in the app.</div></div>
     </div>
     <div id="integ-list"></div>
   </section>
@@ -729,7 +799,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   <section class="tab active" id="tab-sections">
     <div class="page-head">
       <div>
-        <div class="title">Library layout</div>
+        <h2 class="title">Library layout</h2>
         <div class="sub">This is your Library page, top to bottom. The grey blocks are the built-in shelves; drop your custom sections into the gaps to place them exactly where they'll appear.</div>
       </div>
       <button class="btn" onclick="openEditor()">+ Add section <span class="count hidden" id="sec-count" style="margin-left:2px"></span></button>
@@ -743,7 +813,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   <section class="tab" id="tab-cast">
     <div class="page-head">
       <div>
-        <div class="title">Cast screen</div>
+        <h2 class="title">Cast screen</h2>
         <div class="sub">What the TV shows while nothing is playing on the Poptonium Cast receiver ("Spotlight"). One title at a time fills the screen with its backdrop, logo, ratings and summary, while a poster rail below steps through each section in this order, a few titles at a time. Shelves and carousels work the same here. "Who's watching" shows as a small live badge in the corner while someone is.</div>
       </div>
       <button class="btn" onclick="saveCastScreen()">Save</button>
@@ -757,11 +827,11 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
     </div>
     <div class="grid2" id="cast-custom">
       <div>
-        <div class="eyebrow">On the TV <span class="muted" id="cast-count"></span></div>
+        <h3 class="eyebrow">On the TV <span class="muted" id="cast-count"></span></h3>
         <div class="card"><table class="tbl"><tbody id="cast-rows"></tbody></table></div>
       </div>
       <div>
-        <div class="eyebrow">Available</div>
+        <h3 class="eyebrow">Available</h3>
         <div class="card"><table class="tbl"><tbody id="cast-available"></tbody></table></div>
       </div>
     </div>
@@ -770,17 +840,18 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   <!-- ════════ RATINGS ════════ -->
   <section class="tab" id="tab-ratings">
     <div class="page-head">
-      <div><div class="title">Ratings</div><div class="sub">Which score badges appear on each item, and the single rating used for sorting and section minimums.</div></div>
+      <div><h2 class="title">Ratings</h2><div class="sub">Which score badges appear on each item, and the single rating used for sorting and section minimums.</div></div>
     </div>
 
-    <div class="eyebrow">Live preview</div>
+    <h3 class="eyebrow">Live preview</h3>
+    <div id="rt-notice"></div>
     <div class="card pad" id="rt-preview"></div>
 
-    <div class="eyebrow">Badge groups</div>
-    <p class="muted" style="margin:-4px 0 14px;font-size:13px;max-width:74ch">Each source belongs to one group. <b>Always shown</b> groups render their badges whenever a score exists. <b>Fallback</b> groups only appear when everything above them is empty, tried top to bottom until one has a score. <b>Drag the handle</b> to reorder groups.</p>
+    <h3 class="eyebrow">Badge groups</h3>
+    <p class="muted" style="margin:-4px 0 14px;font-size:13.5px;max-width:68ch;text-wrap:pretty">Each source belongs to one group. <b>Always shown</b> groups render their badges whenever a score exists. <b>Fallback</b> groups only appear when everything above them is empty, tried top to bottom until one has a score. <b>Drag the handle</b> to reorder groups.</p>
     <div id="rt-groups"></div>
 
-    <div class="eyebrow">Rating formula</div>
+    <h3 class="eyebrow">Rating formula</h3>
     <div class="card pad">
       <div class="grid2">
         <div class="field"><label>Source of truth</label>
@@ -791,7 +862,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
           <div class="hint">MDbList's own blended score is recommended.</div>
         </div>
         <div class="field"><label>When MDbList score is missing</label>
-          <select id="rt-missing"><option value="average">Average the available sources</option><option value="zero">Treat as none (hide)</option></select>
+          <select id="rt-missing" aria-label="When MDbList score is missing"><option value="average">Average the available sources</option><option value="zero">Treat as none (hide)</option></select>
         </div>
       </div>
       <div id="rt-custom" class="hidden" style="margin-top:8px">
@@ -806,7 +877,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
       <div class="actions-row"><button class="btn" onclick="saveRatingsConfig()">Save formula &amp; badges</button></div>
     </div>
 
-    <div class="eyebrow">Library ratings sync</div>
+    <h3 class="eyebrow">Library ratings sync</h3>
     <div class="card pad">
       <div class="grid2">
         <div class="field"><label>Nightly sync</label>
@@ -816,12 +887,12 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
           </label>
         </div>
         <div class="field"><label>Run at <span class="opt">(server time)</span></label>
-          <div class="slider-row"><input type="range" id="rt-sync-hour" min="0" max="23" step="1" value="3"><span class="slider-val" id="rt-sync-hour-v">03:00</span></div>
+          <div class="slider-row"><input type="range" id="rt-sync-hour" aria-label="Run at hour (server time)" min="0" max="23" step="1" value="3"><span class="slider-val" id="rt-sync-hour-v">03:00</span></div>
         </div>
       </div>
       <div class="actions-row">
         <button class="btn" onclick="saveSync()">Save schedule</button>
-        <button class="btn ghost" onclick="runAction('library_ratings')">↻ Sync now</button>
+        <button class="btn ghost" onclick="runAction('library_ratings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/></svg> Sync now</button>
       </div>
       <div class="muted" id="rt-sync-info" style="font-size:12px;margin-top:10px"></div>
     </div>
@@ -832,10 +903,10 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
 
 <!-- ════════ EDITOR DRAWER ════════ -->
 <div class="scrim-bg" id="scrim-bg" onclick="closeEditor()"></div>
-<aside class="drawer" id="drawer">
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="ed-title">
   <div class="drawer-head">
-    <div style="flex:1"><div class="dt" id="ed-title">New section</div><div class="ds" id="ed-sub"></div></div>
-    <button class="iconbtn" onclick="closeEditor()" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <div style="flex:1"><h2 class="dt" id="ed-title">New section</h2><div class="ds" id="ed-sub"></div></div>
+    <button class="iconbtn" onclick="closeEditor()" title="Close" aria-label="Close editor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
   </div>
   <div class="drawer-body">
     <div class="drawer-loading hidden" id="ed-loading"><div class="spinner"></div><div class="lbl">Loading…</div></div>
@@ -889,7 +960,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
         <div class="field"><label>Library</label><select id="f-collection-lib" onchange="loadCollections(this.value)"></select></div>
         <div class="field"><label>Collections <span class="opt">(pick one or more, across libraries, to combine)</span></label>
           <div class="tokenfield">
-            <input class="search" id="f-collection-search" placeholder="Search collections…" oninput="STATE.colShown=CHIP_STEP;renderCollectionChips()" />
+            <input type="text" class="search" id="f-collection-search" aria-label="Search collections" placeholder="Search collections…" oninput="STATE.colShown=CHIP_STEP;renderCollectionChips()" />
             <div class="chips" id="f-collections-chips"></div>
           </div>
         </div>
@@ -949,7 +1020,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
           <div class="field"><label>Added within</label>
             <div class="slider-row"><input type="range" id="f-added" min="0" max="365" step="5" value="0"><span class="slider-val" id="f-added-v"><small>Any time</small></span></div></div>
           <div class="field"><label>Release year <span class="opt">(from / to)</span></label>
-            <div style="display:flex;gap:10px"><input type="number" id="f-yafter" placeholder="1970" /><input type="number" id="f-ybefore" placeholder="2026" /></div></div>
+            <div style="display:flex;gap:10px"><input type="number" id="f-yafter" placeholder="1970" aria-label="Released from year" /><input type="number" id="f-ybefore" placeholder="2026" aria-label="Released up to year" /></div></div>
         </div>
         <div class="grid2">
           <div class="field"><label>Released within</label>
@@ -997,7 +1068,7 @@ select{appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='h
   </div>
 </aside>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" onclick="this.className='toast'"></div>
 
 <script>
 /* ============================================================
@@ -1299,7 +1370,36 @@ function toast(msg, err){
   const t=$("toast");
   t.innerHTML = (err?icon("x"):icon("check")) + `<span>${esc(msg)}</span>`;
   t.className = "toast show" + (err?" err":"");
-  clearTimeout(toastT); toastT=setTimeout(()=>t.className="toast", 2400);
+  clearTimeout(toastT); toastT=setTimeout(()=>t.className="toast", err ? 7000 : 2600);
+}
+/* ---------- plain-language helpers ---------- */
+const JOB_NAMES = {library_ratings:"Library ratings sync", popular_refresh:"Popular refresh"};
+function jobName(id){ return JOB_NAMES[id] || id; }
+// APScheduler trigger strings like cron[hour='3', minute='0'] -> "Daily at 03:00"
+function fmtTrigger(t){
+  const m = /^cron\[(.*)\]$/.exec(t||""); if(!m) return t||"";
+  const f = {}; m[1].replace(/(\w+)='([^']*)'/g, (_,k,v)=>{ f[k]=v; });
+  const keys = Object.keys(f).filter(k=>!["second"].includes(k));
+  const pad = v => String(v).padStart(2,"0");
+  if(/^\d+$/.test(f.hour||"") && /^\d+$/.test(f.minute||"0") && keys.every(k=>["hour","minute"].includes(k)))
+    return `Daily at ${pad(f.hour)}:${pad(f.minute||0)}`;
+  return t;
+}
+// Turn a raw connection-test failure into a cause + what to try.
+function connectionFix(service, detail){
+  const d = String(detail||"");
+  if(/attempts failed|connect|refused|timed? ?out|resolve|name or service|unreachable/i.test(d))
+    return service==="plex"
+      ? "This container couldn't reach that address. Check the host and port (Plex listens on 32400 by default) and that both containers are on a network that can see each other."
+      : "This container couldn't reach that address. Check the host, port and that the service is running.";
+  if(/401|403|unauthori[sz]ed|forbidden|invalid.*(token|key)|token/i.test(d))
+    return service==="plex" ? "Plex rejected the token. Copy a fresh one and test again." : "The key was rejected. Copy it again and test once more.";
+  return "";
+}
+function testResultHtml(service, r){
+  const msg = r.detail || (r.ok ? "Connected" : "Failed");
+  const fix = r.ok ? "" : connectionFix(service, msg);
+  return esc(msg) + (fix ? `<span class="fix">${esc(fix)}</span>` : "");
 }
 function esc(s){ return (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function fmtTime(epoch){ if(!epoch) return "never"; const d=Date.now()/1000-epoch; if(d<60) return "just now"; if(d<3600) return Math.round(d/60)+"m ago"; if(d<86400) return Math.round(d/3600)+"h ago"; return Math.round(d/86400)+"d ago"; }
@@ -1315,7 +1415,10 @@ function setTheme(id){
 
 /* ---------- tabs ---------- */
 function switchTab(name){
-  document.querySelectorAll(".appbar nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===name));
+  document.querySelectorAll(".appbar nav button").forEach(b=>{
+    const on = b.dataset.tab===name; b.classList.toggle("active", on);
+    if(on){ b.setAttribute("aria-current","page"); b.scrollIntoView({block:"nearest", inline:"nearest"}); } else b.removeAttribute("aria-current");
+  });
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.id==="tab-"+name));
   if(name==="dashboard") loadStatus();
   if(name==="integrations") loadIntegrations();
@@ -1387,7 +1490,7 @@ async function saveCastScreen(){
    DASHBOARD
    ============================================================ */
 async function loadStatus(){
-  let s; try{ s=await api("/admin/status"); }catch(e){ toast("Status failed",true); return; }
+  let s; try{ s=await api("/admin/status"); }catch(e){ toast("Couldn't load server status: "+e.message,true); return; }
   $("ver").textContent = "v"+s.version;
 
   const integ=[
@@ -1401,7 +1504,7 @@ async function loadStatus(){
     // Embedded subtitles for the Cast receiver: needs the media mounted read-only at Plex's paths.
     const libs=cs.libraries||[], missing=libs.filter(l=>!l.mounted).map(l=>l.path);
     integ.push(["Cast subtitles", cs.configured && cs.mounted>0, cs.healthy,
-      !cs.configured ? "ffmpeg missing" : !libs.length ? "No Plex libraries" : `${cs.mounted}/${libs.length} library folders mounted`,
+      !cs.configured ? "Needs ffmpeg in the image" : !libs.length ? "No Plex libraries" : `${cs.mounted}/${libs.length} library folders mounted`,
       missing.length ? "Not visible in this container: "+missing.join(", ") : ""]);
   }
   $("integrations").innerHTML = integ.map(([n,on,healthy,detail,tip])=>{
@@ -1415,6 +1518,10 @@ async function loadStatus(){
       <div><div class="nm">${n}</div><div class="st">${esc(st)}</div></div></div>`;
   }).join("");
 
+  // Nudge toward the one integration most features depend on.
+  const mdbOn = !!(s.ratings && s.ratings.configured);
+  $("dash-notice").innerHTML = mdbOn ? "" : `<div class="notice">${icon("info")}<div><b>MDbList isn't connected.</b> Ratings badges, rating-based sections and the library ratings sync need it. <button class="linklike" type="button" onclick="switchTab('integrations')">Add an MDbList key</button></div></div>`;
+  const sb=$("dash-sync"); if(sb){ sb.disabled = !mdbOn && !DEMO; sb.title = sb.disabled ? "Connect MDbList first" : ""; }
   const c=s.caches;
   $("cache-cards").innerHTML = [
     {n:c.mdblist_ratings.toLocaleString(), l:"Rated titles", s:"synced "+fmtTime(c.ratings_last_sync), ic:"star"},
@@ -1424,14 +1531,14 @@ async function loadStatus(){
   ].map(x=>`<div class="card stat"><span class="ico">${icon(x.ic)}</span><div class="n">${x.n}</div><div class="l">${x.l}</div><div class="s">${esc(x.s)}</div></div>`).join("");
 
   $("jobs").innerHTML = (s.jobs.length? s.jobs.map(j=>`
-    <tr><td><div style="font-weight:650">${esc(j.name||j.id)}</div><div class="muted" style="font-size:12px;margin-top:2px">${esc(j.trigger)}</div></td>
-    <td class="muted">${fmtNext(j.next_run)}</td>
-    <td style="text-align:right"><button class="btn ghost sm" onclick="runAction('${j.id}')">${icon("refresh")} Run now</button></td></tr>`).join("")
+    <tr><td><div style="font-weight:650">${esc(j.name||j.id)}</div><div class="muted" style="font-size:12.5px;margin-top:2px" title="${esc(j.trigger)}">${esc(fmtTrigger(j.trigger))}</div></td>
+    <td class="muted" style="white-space:nowrap">Next ${fmtNext(j.next_run)}</td>
+    <td style="text-align:right"><button class="btn ghost sm" onclick="runAction('${j.id}')" aria-label="Run ${esc(j.name||j.id)} now">${icon("refresh")} Run now</button></td></tr>`).join("")
     : `<tr><td class="muted">No scheduled jobs</td></tr>`);
 
 }
-async function runAction(job){ try{ await api(`/admin/cron/${job}/run`,{method:"POST"}); toast("Started: "+job); setTimeout(loadStatus,1400);}catch(e){toast(e.message,true);} }
-async function clearCache(which){ if(!confirm("Clear the "+which+" cache?")) return; try{ await api(`/admin/cache/clear?which=${which}`,{method:"POST"}); toast("Cleared "+which+" cache"); setTimeout(loadStatus,600);}catch(e){toast(e.message,true);} }
+async function runAction(job){ try{ await api(`/admin/cron/${job}/run`,{method:"POST"}); toast(jobName(job)+" started"); setTimeout(loadStatus,1400);}catch(e){toast(e.message,true);} }
+async function clearCache(which){ if(!confirm(`Clear the ${which} cache? It refills on the next sync.`)) return; try{ await api(`/admin/cache/clear?which=${which}`,{method:"POST"}); toast("Cleared "+which+" cache"); setTimeout(loadStatus,600);}catch(e){toast(e.message,true);} }
 /* ============================================================
    INTEGRATIONS
    ============================================================ */
@@ -1466,7 +1573,7 @@ function coreIntegCard(def, s, cfg){
   const fields = CORE_FIELDS[def.key].map(f=>{
     const isSet = cfg[f.k+"_set"];
     const val = f.secret ? "" : (cfg[f.k]||"");
-    const ph = f.secret ? (isSet ? "•••••••• set — blank keeps it" : "not set") : (f.ph||"");
+    const ph = f.secret ? (isSet ? "Saved. Leave blank to keep it" : `Paste your ${/^[A-Z]{2}/.test(f.label) ? f.label : f.label.toLowerCase()}`) : (f.ph||"");
     return `<label class="auth-field" style="margin-bottom:10px"><span>${esc(f.label)}</span>
       <input id="ci-${def.key}-${f.k}" type="${f.secret?'password':'text'}" value="${esc(val)}"
              placeholder="${esc(ph)}" autocomplete="off">${f.help?`<small class="field-help">${esc(f.help)}</small>`:""}</label>`;
@@ -1499,7 +1606,7 @@ async function testCore(key){
   try{
     const r=await api("/admin/config/test",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({service:key, values:collectCore(key)})});
-    res.textContent=r.detail||(r.ok?"Connected":"Failed"); res.className="setup-res "+(r.ok?"ok":"bad");
+    res.innerHTML=testResultHtml(key, r); res.className="setup-res "+(r.ok?"ok":"bad");
   }catch(e){ res.textContent=e.message; res.className="setup-res bad"; }
 }
 async function saveCore(key){
@@ -1513,7 +1620,7 @@ let PLUGINS_BY_ID = {};
 let PLUGIN_SETTINGS = {};   // pid -> {values:{}, secrets_set:{}}
 
 async function loadIntegrations(){
-  let s; try{ s=await api("/admin/status"); }catch(e){ toast("Status failed",true); return; }
+  let s; try{ s=await api("/admin/status"); }catch(e){ toast("Couldn't load integrations: "+e.message,true); return; }
 
   const cfg = s.config || {};
   const core = INTEG_DEFS.map(d=>coreIntegCard(d, s, cfg)).join("");
@@ -1524,15 +1631,15 @@ async function loadIntegrations(){
 
   const addCard = `<div class="card plugin-add" style="margin-bottom:14px">
        <div class="nm"><span class="ico">${icon("plug")}</span>Add a plugin</div>
-       <div class="ph">Enter the base URL of a plugin sidecar. It must serve <span class="mono">/plugin/manifest</span>. Example: <span class="mono">http://my-plugin:8086</span></div>
+       <div class="ph">Enter the base URL of a plugin sidecar. It must serve <span class="mono">/plugin/manifest</span>. For example <span class="mono" style="white-space:nowrap">http://my-plugin:8086</span>.</div>
        <div class="row">
-         <input class="search" id="plugin-add-url" placeholder="http://host:port" autocomplete="off" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addPlugin();}">
+         <input type="url" id="plugin-add-url" aria-label="Plugin base URL" placeholder="http://my-plugin:8086" autocomplete="off" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addPlugin();}">
          <button class="btn" onclick="addPlugin()">Add plugin</button>
        </div>
      </div>`;
 
   $("integ-list").innerHTML = core
-    + `<div class="eyebrow" style="margin-top:26px">Plugins</div>`
+    + `<h3 class="eyebrow" style="margin-top:26px">Plugins</h3>`
     + addCard
     + (plugins.length
         ? plugins.map(pluginCardHtml).join("")
@@ -1581,7 +1688,7 @@ function pluginFieldHtml(pid,f){
   if(f.type==="chips"){
     input = `<div class="tokenfield">
       <div class="chips" id="pf-chips-${pid}-${f.key}" style="max-height:none"></div>
-      <input class="search" id="pf-chipsin-${pid}-${f.key}" placeholder="Add and press Enter…" onkeydown="pluginChipKey(event,'${pid}','${f.key}')" autocomplete="off">
+      <input type="text" class="search" id="pf-chipsin-${pid}-${f.key}" aria-label="Add a value" placeholder="Add and press Enter…" onkeydown="pluginChipKey(event,'${pid}','${f.key}')" autocomplete="off">
     </div>`;
   } else if(f.type==="bool"){
     input = `<label style="display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" id="${fid}"> Enabled</label>`;
@@ -1590,7 +1697,7 @@ function pluginFieldHtml(pid,f){
   } else {
     input = `<input class="search" type="${f.type==='secret'?'password':'text'}" id="${fid}" autocomplete="off">`;
   }
-  return `<div class="set-block" style="margin-top:12px"><div class="set-label">${esc(f.label||f.key)}</div>${help}${input}</div>`;
+  return `<div class="set-block" style="margin-top:12px"><label class="set-label" style="display:block" ${f.type==="chips"||f.type==="bool"?"":`for="${fid}"`}>${esc(f.label||f.key)}</label>${help}${input}</div>`;
 }
 
 async function loadPluginSettings(pid){
@@ -1626,7 +1733,7 @@ function renderPluginChips(pid,key){
   const box = $(`pf-chips-${pid}-${key}`); if(!box) return;
   const arr = pluginChips(pid,key);
   box.innerHTML = arr.length
-    ? arr.map((c,i)=>`<span class="chip sel">${esc(c)}<span class="chip-x" onclick="removePluginChip('${pid}','${key}',${i})" title="Remove">×</span></span>`).join("")
+    ? arr.map((c,i)=>`<span class="chip sel">${esc(c)}<span class="chip-x" onclick="removePluginChip('${pid}','${key}',${i})" title="Remove" aria-label="Remove ${esc(c)}">×</span></span>`).join("")
     : `<span class="muted" style="font-size:12px;padding:4px 2px">Empty.</span>`;
 }
 function pluginChipKey(e,pid,key){
@@ -1748,8 +1855,9 @@ function wizTitle(t){
   return (t||"").replace(/\{(director|genre|actor|library|libraries|country)\}/g,
     (m,w)=>({director:"Director",genre:"Genre",actor:"Actor",library:"Library",libraries:"Libraries",country:"Country"}[w]||m)).trim();
 }
-function openWizard(){ WIZ={screen:"choose",preview:null,collections:[]}; $("wiz").classList.remove("hidden"); renderWizard(); }
-function closeWizard(){ $("wiz").classList.add("hidden"); }
+function openWizard(){ WIZ={screen:"choose",preview:null,collections:[]}; $("wiz").classList.remove("hidden"); setBackgroundInert(true); renderWizard();
+  setTimeout(()=>{ const b=$("wiz").querySelector(".wiz-choice.primary, .wiz-body button"); if(b) b.focus(); }, 30); }
+function closeWizard(){ $("wiz").classList.add("hidden"); setBackgroundInert(false); }
 function renderWizard(){ WIZ.screen==="choose" ? renderWizChoose() : renderWizPreview(); }
 
 function renderWizChoose(){
@@ -1845,7 +1953,7 @@ function sectionsIn(pos){
 }
 function renderBoard(){
   const host = $("board-device");
-  let html = `<div class="board-statusbar"><span class="lib">Library</span><span>WYSIWYG · top → bottom</span></div>`;
+  let html = `<div class="board-statusbar"><span class="lib">Library</span><span>Top to bottom, as in the app</span></div>`;
   if(!STATE.sections.length){
     html += `<div class="board-empty"><div class="t">Your Library is empty.</div>
       <button class="btn" type="button" onclick="openWizard()">${icon("star")} Add starter sections</button></div>`;
@@ -1926,16 +2034,16 @@ function renderBlock(s){
     <div class="body">
       <div class="top">
         <div class="heading">
-          <div class="t">${esc(s.title)}${s.enabled?'':' <span class="pill off">disabled</span>'}</div>
+          <div class="t">${esc(s.title)}${s.enabled?'':' <span class="pill off">hidden</span>'}</div>
           ${s.subtitle?`<div class="s">${esc(s.subtitle)}</div>`:""}
         </div>
         <div class="controls">
           <div class="rowacts">
-            <button class="iconbtn" title="Edit" onclick="editSection(${s.id})">${icon("edit")}</button>
-            <button class="iconbtn" title="Duplicate" onclick="duplicateSection(${s.id})">${icon("copy")}</button>
-            <button class="iconbtn" title="Delete" onclick="delSection(${s.id})">${icon("trash")}</button>
+            <button class="iconbtn" title="Edit" aria-label="Edit ${esc(s.title)}" onclick="editSection(${s.id})">${icon("edit")}</button>
+            <button class="iconbtn" title="Duplicate" aria-label="Duplicate ${esc(s.title)}" onclick="duplicateSection(${s.id})">${icon("copy")}</button>
+            <button class="iconbtn" title="Delete" aria-label="Delete ${esc(s.title)}" onclick="delSection(${s.id})">${icon("trash")}</button>
           </div>
-          <label class="toggle" title="${s.enabled?'Enabled':'Disabled'}"><input type="checkbox" ${s.enabled?'checked':''} onchange="toggleEnabled(${s.id},this.checked)"><span></span></label>
+          <label class="toggle" title="${s.enabled?'Shown in the app':'Hidden from the app'}"><input type="checkbox" aria-label="Show ${esc(s.title)} in the app" ${s.enabled?'checked':''} onchange="toggleEnabled(${s.id},this.checked)"><span></span></label>
         </div>
       </div>
       <div class="tags">${tags}</div>
@@ -2093,7 +2201,9 @@ async function openEditor(existing){
   // collections, tags), so the drawer never appears to hang on a blank delay.
   $("preview-box").classList.add("hidden");
   $("ed-loading").classList.remove("hidden");
+  EDITOR_RETURN = document.activeElement;
   $("scrim-bg").classList.add("open"); $("drawer").classList.add("open");
+  setTimeout(()=>{ if($("drawer").classList.contains("open")) $("f-title").focus(); }, 60);
   try {
   $("f-id").value = existing ? existing.id : "";
   $("f-title").value = existing ? existing.title : "";
@@ -2160,9 +2270,15 @@ async function openEditor(existing){
   onRandomizeChange();
   } finally {
     $("ed-loading").classList.add("hidden");
+    if($("drawer").classList.contains("open") && !$("drawer").contains(document.activeElement)) $("f-title").focus();
   }
 }
-function closeEditor(){ $("scrim-bg").classList.remove("open"); $("drawer").classList.remove("open"); }
+let EDITOR_RETURN = null;
+function closeEditor(){
+  $("scrim-bg").classList.remove("open"); $("drawer").classList.remove("open");
+  if(EDITOR_RETURN && document.contains(EDITOR_RETURN)) EDITOR_RETURN.focus();
+  EDITOR_RETURN = null;
+}
 
 /* ---- type selection ---- */
 function selectType(t, silent){
@@ -2387,7 +2503,7 @@ let RT = {config:null, sync:null};
 
 async function loadRatings(){
   try{ RT.config=await api("/ratings/config"); RT.sync=await api("/admin/ratings/sync"); }
-  catch(e){ toast("Load ratings failed: "+e.message,true); return; }
+  catch(e){ toast("Couldn't load ratings settings: "+e.message,true); return; }
   renderBadgePreview(); renderGroups();
   segSet("rt-preset", RT.config.formula?.preset||"mdblist");
   $("rt-missing").value = RT.config.formula?.missing_mdblist||"average";
@@ -2395,7 +2511,9 @@ async function loadRatings(){
   renderWeights(); onPresetChange();
   $("rt-sync-enabled").checked = !!RT.sync.enabled;
   setSlider("rt-sync-hour", RT.sync.hour ?? 3);
-  try{ const s=await api("/admin/status"); $("rt-sync-info").textContent=`${s.caches.mdblist_ratings.toLocaleString()} titles cached · last sync ${fmtTime(s.caches.ratings_last_sync)}`; }catch(e){}
+  try{ const s=await api("/admin/status");
+    $("rt-notice").innerHTML = (s.ratings && s.ratings.configured) ? "" : `<div class="notice">${icon("info")}<div><b>MDbList isn't connected,</b> so items have no scores yet and these badges stay empty in the app. <button class="linklike" type="button" onclick="switchTab('integrations')">Connect MDbList</button></div></div>`;
+    $("rt-sync-info").textContent=`${s.caches.mdblist_ratings.toLocaleString()} titles cached · last sync ${fmtTime(s.caches.ratings_last_sync)}`; }catch(e){}
 }
 function ratingGroups(){
   if(!Array.isArray(RT.config.display_groups)||!RT.config.display_groups.length)
@@ -2532,7 +2650,7 @@ Object.assign(window,{loadRatings,removeGroup,addGroup,toggleGroupSource,onPrese
 // Title/subtitle placeholder help, shown from the (i) next to those fields.
 const TEMPLATE_TIP_HTML = `
   <div class="tip">
-    <h5>Title &amp; subtitle placeholders</h5>
+    <div class="th">Title &amp; subtitle placeholders</div>
     <p>In a <b>Filter</b> section, drop one of these into the title or subtitle and it's replaced with the tag(s) the section picked:</p>
     <div class="tprow"><code>{genre}</code><span>the genre(s) you picked, e.g. “Action”</span></div>
     <div class="tprow"><code>{director}</code><span>the director(s) you picked</span></div>
@@ -2574,7 +2692,7 @@ function renderAuthMode(mode){
 
 function openAuthGate(mode){
   renderAuthMode(mode);
-  $("auth-gate").classList.remove("hidden");
+  $("auth-gate").classList.remove("hidden"); setBackgroundInert(true);
   $("logout-btn").classList.add("hidden");
   setTimeout(()=>{ const u=$("auth-user"); if(u && !u.value) u.focus(); else $("auth-pass").focus(); }, 30);
 }
@@ -2615,7 +2733,7 @@ async function submitAuth(ev){
     });
     if(!r.ok){ let d=""; try{d=(await r.json()).detail||"";}catch(e){} throw new Error(d || `${r.status} ${r.statusText}`); }
     // Authenticated: hide the gate; run the setup wizard if Plex isn't ready yet.
-    $("auth-gate").classList.add("hidden");
+    $("auth-gate").classList.add("hidden"); setBackgroundInert(false);
     $("auth-pass").value=""; $("auth-confirm").value="";
     $("logout-btn").classList.remove("hidden");
     toast(AUTH_MODE==="setup" ? "Admin account created" : "Signed in");
@@ -2669,7 +2787,8 @@ async function enterApp(st){
 const SETUP_STEPS = [
   {key:"plex", name:"Plex", required:true, fields:[
     {k:"PLEX_URL", label:"Plex URL", ph:"http://plex:32400"},
-    {k:"PLEX_TOKEN", label:"Plex token", secret:true}]},
+    {k:"PLEX_TOKEN", label:"Plex token", secret:true,
+     help:"In Plex Web, open any movie, choose ⋯ › Get Info › View XML. The token is the X-Plex-Token value at the end of the address."}]},
   {key:"mdblist", name:"MDbList", note:"Needed for rating-based shelves (Movie/TV Spotlight) and the Trending shelf. Without it, those sections are skipped or show recent titles instead.", fields:[
     {k:"MDBLIST_API_KEY", label:"MDbList API key", secret:true}]},
   {key:"overseerr", name:"Overseerr", note:"Powers in-app requests and discovery. Optional.", fields:[
@@ -2686,10 +2805,10 @@ let SETUP = {step:0, config:{}, tested:{}};
 function openSetupWizard(){
   SETUP = {step:0, config:{}, tested:{}};
   $("auth-gate").classList.add("hidden");
-  $("setup-gate").classList.remove("hidden");
+  $("setup-gate").classList.remove("hidden"); setBackgroundInert(true);
   renderSetupStep();
 }
-function closeSetupWizard(){ $("setup-gate").classList.add("hidden"); }
+function closeSetupWizard(){ $("setup-gate").classList.add("hidden"); setBackgroundInert(false); }
 
 function renderSetupStep(){
   const i = SETUP.step, step = SETUP_STEPS[i], last = i === SETUP_STEPS.length-1;
@@ -2698,7 +2817,7 @@ function renderSetupStep(){
   $("setup-title").textContent = step.required ? `Connect ${step.name}` : `${step.name}`;
   $("setup-sub").textContent = step.required
     ? "Poptonium needs a working Plex connection to run."
-    : "Optional — add it now, or skip and set it up later under Integrations.";
+    : "Optional. Add it now, or skip and set it up later under Integrations.";
   const note = step.note ? `<div class="setup-note">${esc(step.note)}</div>` : "";
   const fields = step.fields.map(f=>`
     <label class="auth-field"><span>${esc(f.label)}</span>
@@ -2712,6 +2831,8 @@ function renderSetupStep(){
   $("setup-skip").classList.toggle("hidden", !!step.required);
   $("setup-next").textContent = last ? "Finish" : "Next";
   $("setup-next").disabled = !!step.required && !SETUP.tested[step.key];
+  $("setup-hint").classList.toggle("hidden", !$("setup-next").disabled);
+  setTimeout(()=>{ const f=$("su-"+step.fields[0].k); if(f) f.focus(); }, 30);
 }
 
 function collectSetup(step){
@@ -2726,7 +2847,7 @@ function collectSetup(step){
 }
 function onSetupInput(){
   const step = SETUP_STEPS[SETUP.step];
-  if(step.required){ SETUP.tested[step.key]=false; $("setup-next").disabled=true; }
+  if(step.required){ SETUP.tested[step.key]=false; $("setup-next").disabled=true; $("setup-hint").classList.remove("hidden"); }
 }
 async function setupTest(){
   const step = SETUP_STEPS[SETUP.step], res = $("setup-res");
@@ -2734,10 +2855,10 @@ async function setupTest(){
   try{
     const r = await api("/admin/config/test", {method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({service:step.key, values:collectSetup(step)})});
-    res.textContent = r.detail || (r.ok ? "Connected" : "Failed");
+    res.innerHTML = testResultHtml(step.key, r);
     res.className = "setup-res " + (r.ok ? "ok" : "bad");
     SETUP.tested[step.key] = !!r.ok;
-    if(step.required) $("setup-next").disabled = !r.ok;
+    if(step.required){ $("setup-next").disabled = !r.ok; $("setup-hint").classList.toggle("hidden", !!r.ok); }
   }catch(e){ res.textContent = e.message; res.className = "setup-res bad"; }
 }
 async function saveSetupStep(){
@@ -2765,7 +2886,7 @@ async function finishSetup(){
   catch(e){ st = {plex_ready:false}; }
   if(!st.plex_ready){
     SETUP.step = 0; renderSetupStep();
-    const res=$("setup-res"); if(res){ res.textContent="Plex still isn't reachable — check the URL and token."; res.className="setup-res bad"; }
+    const res=$("setup-res"); if(res){ res.textContent="Plex still isn't reachable. Check the URL and token, then test again."; res.className="setup-res bad"; }
     return;
   }
   closeSetupWizard();
@@ -2794,7 +2915,48 @@ function startApp(){
   switchTab(["dashboard","integrations","sections","ratings","cast"].includes(screen)?screen:"sections");
 }
 
+/* ---------- accessibility wiring ---------- */
+// The app shell behind a modal gate/wizard shouldn't be reachable by keyboard.
+function setBackgroundInert(on){
+  const anyOpen = !$("auth-gate").classList.contains("hidden") || !$("setup-gate").classList.contains("hidden") || !$("wiz").classList.contains("hidden");
+  const v = on || anyOpen;
+  document.querySelectorAll("header.appbar, main").forEach(el=>{ el.inert = v; });
+}
+// Clickable chips are spans; make them real buttons for keyboards + screen readers,
+// and tie each field label to its control. Runs on every DOM change (cheap here).
+function enhanceA11y(){
+  document.querySelectorAll("span.chip[onclick]:not([role]), span.chip-x:not([role])").forEach(el=>{
+    el.setAttribute("role","button"); el.tabIndex = 0;
+  });
+  document.querySelectorAll("span.chip[onclick][role]").forEach(el=>{
+    el.setAttribute("aria-pressed", el.classList.contains("sel") ? "true" : "false");
+  });
+  document.querySelectorAll(".field > label:not([for]):not([data-a11y])").forEach((lab,i)=>{
+    lab.dataset.a11y = "1";
+    if(lab.querySelector("input,select,textarea")) return;
+    const field = lab.parentElement;
+    const ctl = field.querySelector(":scope > input[id], :scope > select[id], :scope > textarea[id], :scope > .slider-row input[id], :scope > .tokenfield input[id]");
+    if(ctl){ lab.htmlFor = ctl.id; return; }
+    const grp = field.querySelector(":scope > .seg, :scope > .tokenfield, :scope > .chips");
+    if(grp){ if(!lab.id) lab.id = "lbl-a11y-" + Math.random().toString(36).slice(2,8); grp.setAttribute("role","group"); grp.setAttribute("aria-labelledby", lab.id); }
+  });
+}
+let _a11yQueued = false;
+new MutationObserver(()=>{ if(_a11yQueued) return; _a11yQueued = true; queueMicrotask(()=>{ _a11yQueued = false; enhanceA11y(); }); })
+  .observe(document.body, {childList:true, subtree:true, attributes:true, attributeFilter:["class"]});
+document.addEventListener("keydown", e=>{
+  if((e.key==="Enter" || e.key===" ") && e.target.matches && e.target.matches('[role="button"]:not(button)')){
+    e.preventDefault(); e.target.click(); return;
+  }
+  if(e.key==="Escape"){
+    if($("drawer").classList.contains("open")){ closeEditor(); return; }
+    if(!$("wiz").classList.contains("hidden")){ closeWizard(); return; }
+    if($("toast").classList.contains("show")) $("toast").className = "toast";
+  }
+});
+
 (function init(){
+  enhanceA11y();
   gate();
 })();
 </script>
