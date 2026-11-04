@@ -19,5 +19,11 @@ services:
       - OPENSUBTITLES_API_KEY=${OPENSUBTITLES_API_KEY:-}
       - OPENSUBTITLES_USERNAME=${OPENSUBTITLES_USERNAME:-}
       - OPENSUBTITLES_PASSWORD=${OPENSUBTITLES_PASSWORD:-}
+      # Only if the media is mounted at different paths than Plex uses (see README).
+      - SUBTITLE_PATH_MAP=${SUBTITLE_PATH_MAP:-}
     volumes:
       - ./data:/data
+      # Optional: fast subtitles for the Poptonium Cast receiver. Mount your media
+      # read-only at the same path Plex sees it, e.g.:
+      # - /mnt/user/media/Movies:/movies:ro
+      # - /mnt/user/media/TV Shows:/tv:ro

@@ -50,16 +50,45 @@ docker build -t poptonium .
 docker run -d --name poptonium \
   -p 8085:8085 \
   -v /mnt/user/appdata/poptonium:/data \
+  -v /mnt/user/media/Movies:/movies:ro \
+  -v "/mnt/user/media/TV Shows:/tv:ro" \
   poptonium
 ```
+
+The two media lines are optional (see [Cast receiver subtitles](#cast-receiver-subtitles-optional)):
+use the same container paths as your Plex container.
 
 ### Unraid
 
 Open the **Apps** tab, search for **Poptonium**, and click Install. You can leave the variables
 blank, then open the WebUI (`http://<host>:8085/admin`) and enter your keys in the wizard.
 
+The template includes an optional, read-only **Media** path for
+[Cast receiver subtitles](#cast-receiver-subtitles-optional). Set its Container Path to the path
+your Plex container uses for that folder, and add one mapping per Plex media path if Plex has
+several (for example `/movies` and `/tv`). Leave it out if you don't cast with Poptonium.
+
 (If you prefer to add it by hand, the same template lives at
 [`templates/poptonium.xml`](templates/poptonium.xml): Docker, Add Container, Template.)
+
+### Cast receiver subtitles (optional)
+
+The Poptonium Cast receiver plays files directly on the Chromecast, but a Chromecast can't read
+subtitle tracks embedded in the file. Plex only extracts those inside a full conversion session,
+which on remote streams can re-encode video nobody watches and deliver subtitles at playback
+speed. With your media mounted **read-only**, Poptonium reads the selected track straight from the
+file instead (`/cast/subtitles`, ffmpeg is included in the image): the first subtitles arrive in
+well under a second, ASS keeps its styling, and finished tracks are cached under `/data`. Plex
+still decides and serves the video, so its bandwidth limits are unchanged.
+
+- Mount each media folder at **the same container path Plex uses** (if Plex sees
+  `/tv/Show/S01E01.mkv`, Poptonium needs `/tv` too), with `:ro`.
+- If the paths can't match, set `SUBTITLE_PATH_MAP` to `plex path=container path` pairs separated
+  by `;`, e.g. `/data/movies=/media/Movies;/data/tv=/media/TV Shows`.
+- The dashboard's **Cast subtitles** tile shows how many of Plex's library folders are visible;
+  hover it to see the ones that aren't.
+- Access is checked on Plex with each viewer's own token, so users only get subtitles for items
+  they can see. Without the mount everything still works: the receiver falls back to Plex.
 
 ### First run
 
@@ -145,7 +174,7 @@ gate `/poptonium/admin` to the LAN by whatever access-control mechanism your pro
 
 Everything is configured in the admin UI — the setup wizard or the **Integrations** tab — with a
 **Test connection** button for each integration and secrets masked in the interface. You never need
-to touch environment variables.
+to touch environment variables (the one exception is the optional `SUBTITLE_PATH_MAP` below).
 
 If you'd rather pre-fill the integrations for an automated or Unraid deploy, you can optionally set
 the environment variables below instead of using the wizard; either way you can change everything in
@@ -158,6 +187,7 @@ the UI afterward. These are the credentials the wizard collects:
 | `OVERSEERR_URL`, `OVERSEERR_API_KEY` | In-app search & requests | Overseerr request/search proxy. |
 | `OPENSUBTITLES_API_KEY` | Subtitle search/download | App API key from opensubtitles.com (Profile, API Consumers). |
 | `OPENSUBTITLES_USERNAME`, `OPENSUBTITLES_PASSWORD` | Subtitle downloads | Account whose daily download quota (20/day free) is used. |
+| `SUBTITLE_PATH_MAP` | Cast receiver subtitles | Only when the media is mounted at different paths than Plex uses: `plex path=container path` pairs separated by `;`. See [Cast receiver subtitles](#cast-receiver-subtitles-optional). |
 | `PUBLIC_URL` | Share links | This server's internet address through your reverse proxy (e.g. `https://plex.example.com/poptonium`). Blank keeps sharing off and hides the app's Share button. Share pages are public, so if your proxy geo-blocks or LAN-restricts, exempt `/poptonium/s/` (see the SWAG snippet). |
 
 ## What the admin UI does

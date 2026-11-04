@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from . import scheduler as scheduler_mod
 from . import section_templates
+from .cast_subtitles import media_status
 from .share import sharing_enabled
 from .config import (
     CONFIG_KEYS,
@@ -118,6 +119,7 @@ async def admin_status():
         "plex": {"configured": plex_configured(), "healthy": plex_health, "url": settings.PLEX_URL},
         "opensubtitles": {"configured": opensubtitles_configured(), "username": settings.OPENSUBTITLES_USERNAME},
         "sharing": {"configured": sharing_enabled(), "healthy": None},
+        "cast_subtitles": await media_status(),
         "onboarding_dismissed": onboarding_dismissed,
         "config": settings.as_masked(),
     }

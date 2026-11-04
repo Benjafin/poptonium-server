@@ -21,9 +21,14 @@
   <DonateText/>
   <DonateLink/>
   <Requires/>
-  <ExtraSearchTerms>plex ratings mdblist overseerr opensubtitles discover</ExtraSearchTerms>
-  <Changes>Initial Community Applications release.</Changes>
-  <Date>2026-06-23</Date>
+  <ExtraSearchTerms>plex ratings mdblist overseerr opensubtitles discover chromecast subtitles</ExtraSearchTerms>
+  <Changes>
+### 2026-11-04
+- Optional read-only media mount for fast, styled subtitles on the Poptonium Cast receiver (embedded tracks read from the file).
+### 2026-06-23
+- Initial Community Applications release.
+</Changes>
+  <Date>2026-11-04</Date>
   <MinVer>6.1</MinVer>
   <License>MIT</License>
   <DefaultTagDescription>Stable releases, recommended for everyday use.</DefaultTagDescription>
@@ -37,6 +42,7 @@
   </Branch>
   <Config Name="WebUI / API Port" Target="8085" Default="8085" Mode="tcp" Description="Container port for the web admin UI and API. Keep the host port at 8085: the app falls back to the Plex host on a hardcoded 8085 when no reverse proxy is in front of it." Type="Port" Display="always" Required="true" Mask="false">8085</Config>
   <Config Name="Data" Target="/data" Default="/mnt/user/appdata/poptonium" Mode="rw" Description="Persistent data: SQLite cache DB and custom sections." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/poptonium</Config>
+  <Config Name="Media (read-only)" Target="/media" Default="/mnt/user/media" Mode="ro" Description="Optional, for fast subtitles on the Poptonium Cast receiver: your media, read-only. Set the Container Path to the path Plex itself uses for this folder (copy it from your Plex container's own path mappings; add one mapping per Plex media path), or keep /media and set SUBTITLE_PATH_MAP. The dashboard shows whether every Plex library folder is visible. Without it, subtitles still work through Plex, just slower." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/media</Config>
   <Config Name="PLEX_URL" Target="PLEX_URL" Default="" Mode="" Description="REQUIRED. Internal Plex URL (e.g. http://plex:32400)." Type="Variable" Display="always" Required="true" Mask="false"></Config>
   <Config Name="PLEX_TOKEN" Target="PLEX_TOKEN" Default="" Mode="" Description="REQUIRED. Plex server token (X-Plex-Token)." Type="Variable" Display="always" Required="true" Mask="true"></Config>
   <Config Name="MDBLIST_API_KEY" Target="MDBLIST_API_KEY" Default="" Mode="" Description="Optional. mdblist.com API key: the source for all ratings (IMDb/RT/TMDB/Metacritic/MDbList) plus the Discover feed. Blank disables ratings and the popular feed; the rest still works." Type="Variable" Display="always" Required="false" Mask="true"></Config>
@@ -46,5 +52,6 @@
   <Config Name="OPENSUBTITLES_USERNAME" Target="OPENSUBTITLES_USERNAME" Default="" Mode="" Description="Optional. OpenSubtitles account username; its daily download quota (20/day free) is used for downloads." Type="Variable" Display="always" Required="false" Mask="false"></Config>
   <Config Name="OPENSUBTITLES_PASSWORD" Target="OPENSUBTITLES_PASSWORD" Default="" Mode="" Description="Optional. OpenSubtitles account password." Type="Variable" Display="always" Required="false" Mask="true"></Config>
   <Config Name="PUBLIC_URL" Target="PUBLIC_URL" Default="" Mode="" Description="Optional. This server's internet address through your reverse proxy (e.g. https://plex.example.com/poptonium). Enables share links; blank keeps sharing off. Editable later in the admin under Share links." Type="Variable" Display="always" Required="false" Mask="false"></Config>
+  <Config Name="SUBTITLE_PATH_MAP" Target="SUBTITLE_PATH_MAP" Default="" Mode="" Description="Optional. Only if the media is mounted at a different path than Plex uses: Plex path=container path, separated by ';' (e.g. /data/movies=/media/Movies;/data/tv=/media/TV Shows). Blank when the paths match." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
   <Config Name="TZ" Target="TZ" Default="" Mode="" Description="Optional. Container timezone (e.g. Europe/Berlin). Sets the 'server time' used by the nightly ratings-sync schedule." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
 </Container>

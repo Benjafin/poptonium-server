@@ -1396,14 +1396,23 @@ async function loadStatus(){
     ["OpenSubtitles",s.opensubtitles.configured,null],
     ...(s.plugins||[]).map(p=>[p.name, p.enabled, p.status&&p.status.healthy]),
   ];
-  $("integrations").innerHTML = integ.map(([n,on,healthy])=>{
+  const cs=s.cast_subtitles;
+  if(cs){
+    // Embedded subtitles for the Cast receiver: needs the media mounted read-only at Plex's paths.
+    const libs=cs.libraries||[], missing=libs.filter(l=>!l.mounted).map(l=>l.path);
+    integ.push(["Cast subtitles", cs.configured && cs.mounted>0, cs.healthy,
+      !cs.configured ? "ffmpeg missing" : !libs.length ? "No Plex libraries" : `${cs.mounted}/${libs.length} library folders mounted`,
+      missing.length ? "Not visible in this container: "+missing.join(", ") : ""]);
+  }
+  $("integrations").innerHTML = integ.map(([n,on,healthy,detail,tip])=>{
     let cls="", st="Not configured";
     if(on){
       if(healthy===false){ cls="down"; st="Unavailable"; }
       else { cls="on"; st="Connected"; }   // healthy true or null(no probe)
     }
-    return `<div class="integ ${cls}"><span class="led"></span>
-      <div><div class="nm">${n}</div><div class="st">${st}</div></div></div>`;
+    if(detail) st=detail;
+    return `<div class="integ ${cls}"${tip?` title="${esc(tip)}"`:""}><span class="led"></span>
+      <div><div class="nm">${n}</div><div class="st">${esc(st)}</div></div></div>`;
   }).join("");
 
   const c=s.caches;

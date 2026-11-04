@@ -139,3 +139,16 @@ def test_path_map(monkeypatch):
     assert cast_subtitles.local_path("/data/tv/Show/S01E01.mkv") == "/tv/Show/S01E01.mkv"
     assert cast_subtitles.local_path("/films/A.mkv") == "/movies/A.mkv"
     assert cast_subtitles.local_path("/npo/x.mp4") == "/npo/x.mp4"
+
+
+@respx.mock
+async def test_media_status_reports_unmounted_library_folders(env, tmp_path):
+    (tmp_path / "tv").mkdir()
+    respx.get(f"{PLEX}/library/sections").mock(return_value=httpx.Response(200, json={"MediaContainer": {"Directory": [
+        {"title": "TV Shows", "type": "show", "Location": [{"path": str(tmp_path / "tv")}]},
+        {"title": "Films", "type": "movie", "Location": [{"path": "/movies"}]},
+        {"title": "Music", "type": "artist", "Location": [{"path": "/music"}]},
+    ]}}))
+    s = await cast_subtitles.media_status()
+    assert s["configured"] is True and s["healthy"] is False and s["mounted"] == 1
+    assert [(l["title"], l["mounted"]) for l in s["libraries"]] == [("TV Shows", True), ("Films", False)]

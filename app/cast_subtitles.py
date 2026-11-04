@@ -30,6 +30,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from .client_auth import require_plex_user_token
 from .config import DB_PATH, log, settings
 from .http_client import http_client
+from .plex import plex_configured, plex_get
 
 router = APIRouter()
 
@@ -153,6 +154,26 @@ async def run_extraction(args: list[str], cache_file: Optional[str]) -> AsyncIte
                         os.remove(tmp)
                     except OSError:
                         pass
+
+
+async def media_status() -> dict:
+    """For the admin dashboard: ffmpeg present, and which of Plex's library folders this
+    container can see (they must be mounted at the same path, or mapped)."""
+    libraries = []
+    if plex_configured():
+        data = await plex_get("/library/sections") or {}
+        for d in data.get("MediaContainer", {}).get("Directory", []):
+            if d.get("type") not in ("movie", "show"):
+                continue
+            for loc in d.get("Location") or []:
+                path = loc.get("path") or ""
+                libraries.append({"title": d.get("title"), "path": path, "mounted": bool(path) and os.path.isdir(local_path(path))})
+    return {
+        "configured": bool(ffmpeg_path()),
+        "healthy": bool(libraries) and all(l["mounted"] for l in libraries),
+        "mounted": sum(l["mounted"] for l in libraries),
+        "libraries": libraries,
+    }
 
 
 @router.get("/cast/subtitles")
