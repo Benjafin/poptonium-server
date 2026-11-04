@@ -45,7 +45,7 @@ def _stub(monkeypatch, stored=None):
 
     async def resolve(row, client_schema="1.0.0"):
         calls.append(row["id"])
-        items = [_item(str(row["id"] * 100 + i), user_title="Abi" if row["type"] == "sessions" else None) for i in range(30)]
+        items = [_item(str(row["id"] * 100 + i), user_title="Abi" if row["type"] == "sessions" else None) for i in range(40)]
         return {"id": row["id"], "title": row["title"], "subtitle": None, "type": row["type"], "style": row["style"], "items": items}
 
     async def top(media_type, limit):
@@ -89,10 +89,10 @@ async def test_configured_rows_resolve_in_order(monkeypatch):
     rows = (await _req("GET", "/cast/screen")).json()["rows"]
     assert [r["key"] for r in rows] == ["section:8", "section:10", "top_shows"]
     hero, sessions = rows[0], rows[1]
-    assert hero["style"] == "hero" and len(hero["items"]) == cast_screen.RAIL_ITEMS
+    assert hero["style"] == "hero" and len(hero["items"]) == cast_screen.POOL_ITEMS
     assert len(hero["items"][0]["summary"]) == 280 and "guid" not in hero["items"][0]
     assert sessions["type"] == "sessions" and sessions["items"][0]["user_title"] == "Abi"
-    assert len(sessions["items"]) == cast_screen.RAIL_ITEMS
+    assert len(sessions["items"]) == cast_screen.POOL_ITEMS
 
 
 async def test_deleted_section_is_skipped(monkeypatch):

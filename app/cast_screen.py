@@ -30,8 +30,9 @@ router = APIRouter()
 
 CONFIG_KEY = "cast_screen"
 MAX_ROWS = 10
-# The receiver's rail shows at most this many titles per section.
-RAIL_ITEMS = 12
+# Titles sent per section. The receiver's rail shows 12, picked at random from this pool
+# on each launch, so the TV doesn't open on the same titles every time.
+POOL_ITEMS = 30
 # Live sessions are re-resolved at most every 30 s. The other sections stay put for longer:
 # templated sections ("{genre} night") pick new tags on every resolve, and a new answer
 # makes the receiver rebuild the whole screen.
@@ -143,14 +144,14 @@ async def _top_rated(media_type: str, limit: int) -> list[dict]:
 async def _resolve_row(row: dict, sections: dict[int, dict]) -> Optional[dict]:
     if row["source"] in BUILTINS:
         b = BUILTINS[row["source"]]
-        items = await _top_rated(b["media_type"], RAIL_ITEMS)
+        items = await _top_rated(b["media_type"], POOL_ITEMS)
         return {"key": row["source"], "title": b["title"], "subtitle": None, "type": "top_rated", "style": "row",
                 "items": [_trim(it) for it in items]}
     sec = sections.get(row.get("id") or -1)
     if not sec:
         return None  # deleted since it was picked
     resolved = await resolve_section(sec, client_schema="99.0.0")
-    items = resolved["items"][:RAIL_ITEMS]
+    items = resolved["items"][:POOL_ITEMS]
     return {"key": f"section:{sec['id']}", "title": resolved["title"], "subtitle": resolved.get("subtitle"),
             "type": resolved["type"], "style": resolved["style"], "items": [_trim(it) for it in items]}
 
