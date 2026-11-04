@@ -45,7 +45,7 @@ def _stub(monkeypatch, stored=None):
 
     async def resolve(row, client_schema="1.0.0"):
         calls.append(row["id"])
-        items = [_item(str(row["id"] * 100 + i), user_title="Abi" if row["type"] == "sessions" else None) for i in range(40)]
+        items = [_item(str(row["id"] * 100 + i), user_title="Abi" if row["type"] == "sessions" else None) for i in range(70)]
         return {"id": row["id"], "title": row["title"], "subtitle": None, "type": row["type"], "style": row["style"], "items": items}
 
     async def top(media_type, limit):

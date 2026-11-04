@@ -30,9 +30,10 @@ router = APIRouter()
 
 CONFIG_KEY = "cast_screen"
 MAX_ROWS = 10
-# Titles sent per section. The receiver's rail shows 12, picked at random from this pool
-# on each launch, so the TV doesn't open on the same titles every time.
-POOL_ITEMS = 30
+# Titles sent per section: the whole shelf as the app shows it, with a safety cap. The
+# receiver's rail shows 12; when a shelf holds more, it picks a random 12 per launch (in the
+# shelf's order), so the TV doesn't open on the same titles every time.
+POOL_ITEMS = 60
 # Live sessions are re-resolved at most every 30 s. The other sections stay put for longer:
 # templated sections ("{genre} night") pick new tags on every resolve, and a new answer
 # makes the receiver rebuild the whole screen.
