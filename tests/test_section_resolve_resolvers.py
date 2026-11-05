@@ -684,7 +684,7 @@ async def test_resolve_history_empty(monkeypatch):
 async def test_resolve_history_collapses_episodes_and_labels_watchers(monkeypatch):
     ep1 = {"type": "episode", "ratingKey": "e1", "grandparentKey": "/library/metadata/50",
            "grandparentTitle": "The Show", "grandparentArt": "/gp/art",
-           "thumb": "/ep1/thumb", "accountID": 1, "summary": "s"}
+           "grandparentThumb": "/gp/thumb", "thumb": "/ep1/thumb", "accountID": 1, "summary": "s"}
     ep2 = {"type": "episode", "ratingKey": "e2", "grandparentKey": "/library/metadata/50",
            "grandparentTitle": "The Show", "thumb": "/ep2/thumb", "accountID": 2}
     movie = {"type": "movie", "ratingKey": "900", "title": "A Film",
@@ -712,6 +712,7 @@ async def test_resolve_history_collapses_episodes_and_labels_watchers(monkeypatc
     show = next(it for it in out if it["rating_key"] == "50")
     assert show["title"] == "The Show"
     assert show["type"] == "show"
+    assert show["thumb"] == "/gp/thumb"       # the show's poster, not the episode still
     # Both accounts that watched an episode are collected as watchers.
     assert {w["title"] for w in show["watchers"]} == {"Ada", "Bob"}
     assert show["art"] == "/full/art/50"      # enriched clean backdrop

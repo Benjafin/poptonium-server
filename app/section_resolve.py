@@ -766,7 +766,8 @@ async def _resolve_history(cfg: dict) -> list[dict]:
             title = m.get("grandparentTitle") or m.get("title", "")
             ctype = "show"
             art = m.get("grandparentArt") or m.get("art")
-            thumb = m.get("thumb")
+            # The show's poster, not the episode still: the card stands for the show.
+            thumb = m.get("grandparentThumb") or m.get("thumb")
         else:
             content_rk = str(m.get("ratingKey", ""))
             title = m.get("title", "")

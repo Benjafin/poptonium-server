@@ -51,6 +51,7 @@ DEFAULT_ROWS = [{"source": "top_movies"}, {"source": "top_shows"}]
 _ITEM_FIELDS = (
     "rating_key", "title", "type", "year", "thumb", "art", "clear_logo", "rating", "sources",
     "episode_label", "user_title", "user_thumb", "player", "player_state", "view_offset", "duration",
+    "watchers",
 )
 
 _cache: dict = {"expiry": 0.0, "key": None, "payload": None}
