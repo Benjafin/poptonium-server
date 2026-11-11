@@ -120,6 +120,30 @@ async def server_machine_id() -> Optional[str]:
     return _identity["machine"]
 
 
+async def item_for_user(rating_key: str, token: str, machine_identifier: Optional[str]) -> dict:
+    """The item's metadata as Plex shows it to the caller's own token, so nobody reads a
+    file Plex wouldn't serve them. Raises the HTTP errors the receiver/app fall back on."""
+    if not rating_key.isdigit():
+        raise HTTPException(400, "Bad ratingKey")
+    if machine_identifier and machine_identifier != await server_machine_id():
+        # The client plays from another server than the one this backend serves.
+        raise HTTPException(409, "Different Plex server")
+    try:
+        r = await http_client().get(
+            f"{settings.PLEX_URL}/library/metadata/{rating_key}",
+            headers={"X-Plex-Token": token, "Accept": "application/json"},
+            timeout=10,
+        )
+    except Exception as e:
+        raise HTTPException(502, f"Plex unreachable: {e}")
+    if r.status_code != 200:
+        raise HTTPException(404 if r.status_code in (401, 403, 404) else 502, "Item not available")
+    items = r.json().get("MediaContainer", {}).get("Metadata") or []
+    if not items:
+        raise HTTPException(404, "Item not available")
+    return items[0]
+
+
 async def run_extraction(args: list[str], cache_file: Optional[str]) -> AsyncIterator[bytes]:
     """Streams ffmpeg's output; writes a complete run to `cache_file`."""
     async with _slots:
@@ -189,25 +213,8 @@ async def cast_subtitles(
     binary = ffmpeg_path()
     if not binary:
         raise HTTPException(501, "ffmpeg is not installed")
-    if not ratingKey.isdigit():
-        raise HTTPException(400, "Bad ratingKey")
-    if machineIdentifier and machineIdentifier != await server_machine_id():
-        # The receiver plays from another server than the one this backend serves.
-        raise HTTPException(409, "Different Plex server")
-    try:
-        r = await http_client().get(
-            f"{settings.PLEX_URL}/library/metadata/{ratingKey}",
-            headers={"X-Plex-Token": token, "Accept": "application/json"},
-            timeout=10,
-        )
-    except Exception as e:
-        raise HTTPException(502, f"Plex unreachable: {e}")
-    if r.status_code != 200:
-        raise HTTPException(404 if r.status_code in (401, 403, 404) else 502, "Item not available")
-    items = r.json().get("MediaContainer", {}).get("Metadata") or []
-    if not items:
-        raise HTTPException(404, "Item not available")
-    part, stream = find_stream(items[0], streamId)
+    item = await item_for_user(ratingKey, token, machineIdentifier)
+    part, stream = find_stream(item, streamId)
     codec = (stream.get("codec") or "").lower()
     if stream.get("streamType") != 3 or codec not in TEXT_CODECS:
         raise HTTPException(415, "Not a text subtitle stream")
