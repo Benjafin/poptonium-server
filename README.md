@@ -83,6 +83,8 @@ A Chromecast can't read subtitle tracks embedded in a file, and having Plex extr
 
 If the paths can't match, set `SUBTITLE_PATH_MAP` to `plex path=container path` pairs separated by `;`, for example `/data/movies=/media/Movies;/data/tv=/media/TV Shows`. The dashboard's **Cast subtitles** tile shows which Plex folders are visible. Without the mount, subtitles still come through Plex.
 
+The same mount powers **sound on the phone** while casting: the picture plays muted on the TV and the app streams the audio track (stereo Opus, about 128 kbit/s, so it works remotely too) from `/cast/audio`, kept in sync with the TV. Without the mount the option doesn't appear.
+
 ### Environment variables
 
 The wizard is all you need. If you want to pre-fill a deploy, these variables seed `/data/config.json` **on first boot only**. After that, the admin UI is the source of truth.
