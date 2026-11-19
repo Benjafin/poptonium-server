@@ -3,11 +3,10 @@ services:
     build: .
     container_name: poptonium
     restart: unless-stopped
-    # Keep the host port at 8085. When the app can't reach the backend through a
-    # reverse proxy (same LAN, no proxy) it falls back to the Plex host on a
-    # hardcoded 8085, so changing this breaks that direct discovery path.
+    # Keep the host port at 3654: without a reverse proxy the app probes
+    # http://<plex host>:3654, so another host port breaks LAN discovery.
     ports:
-      - "8085:8085"
+      - "3654:8085"
     environment:
       # Plex is required.
       - PLEX_URL=${PLEX_URL:-}
