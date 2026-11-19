@@ -1,103 +1,104 @@
 <p align="center">
-  <img src="docs/logo.png" alt="Poptonium" width="420">
+  <img src="docs/logo.png" alt="Poptonium" width="380">
 </p>
-
-<h1 align="center">Poptonium Server</h1>
 
 <p align="center">
-  The optional companion server for <a href="https://poptonium.app">Poptonium</a>, a Plex client for
-  <a href="https://apps.apple.com/nl/app/poptonium-for-plex/id6779742766?l=en-GB">iOS</a> and
-  <a href="https://play.google.com/store/apps/details?id=games.benja.poptonium">Android</a>.
+  <b>The companion server for <a href="https://poptonium.app">Poptonium</a>, the Plex client you curate.</b><br>
+  <a href="https://apps.apple.com/nl/app/poptonium-for-plex/id6779742766?l=en-GB">iOS</a> ·
+  <a href="https://play.google.com/store/apps/details?id=games.benja.poptonium">Android</a> ·
+  <a href="https://poptonium.app">poptonium.app</a>
 </p>
 
-One small container with a web admin UI. It powers:
+<table>
+  <tr>
+    <td><img src="docs/screenshots/admin-sections.png" alt="Sections in the admin" width="560"></td>
+    <td><img src="docs/screenshots/app-sections.webp" alt="The same sections in the app" width="240"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub>Build rows and heroes in the admin. They appear on everyone's Library page.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/admin-ratings.png" alt="Rating badges in the admin" width="560"></td>
+    <td><img src="docs/screenshots/app-ratings.webp" alt="Rating badges in the app" width="240"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub>Pick which scores show, with fallbacks when a title has none.</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/screenshots/tv-spotlight.webp" alt="Spotlight on the Cast receiver" width="808"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub>The same sections drive the TV while nothing is playing.</sub></td>
+  </tr>
+</table>
 
-- **Curated library**: rows and hero banners built from Plex collections or rating, date and genre filters.
-- **Ratings**: IMDb, Rotten Tomatoes, TMDB and Metacritic, with the display and weighting you choose.
-- **Subtitles**: viewers search and download in-app through your OpenSubtitles connection; styled subtitles on the Poptonium Cast receiver.
-- **Popular feed**: a nightly-refreshed Discover feed.
-- **Search and requests**: through Overseerr.
-- **Share links**: share a movie, show or episode as a public link with a rich preview.
+## What it adds
 
-Without the server, the app is a standard Plex client with full Cast support. Feature details, guides and support: **[poptonium.app](https://poptonium.app)**.
+- **Curated library**: sections from Plex collections or rating, date and genre filters
+- **Ratings**: IMDb, Rotten Tomatoes, TMDB and Metacritic
+- **Subtitles**: in-app search and download, styled subtitles when casting
+- **Popular feed**, **requests** via Overseerr, and **share links**
+
+Without the server, Poptonium is a regular Plex client. More on [poptonium.app](https://poptonium.app).
 
 ## Install
 
-Only Plex is required. Each integration is optional, and leaving one out disables just that feature.
-
-| | |
-|---|---|
-| Image | `ghcr.io/benjafin/poptonium:latest` (stable) or `:dev` |
-| Port | `8085`. **Keep the host port at 8085**: without a reverse proxy the app finds the server on the Plex host at 8085. |
-| Data | `/data` (config, database, caches) |
-
-**Unraid**: in **Apps**, search for **Poptonium** and click Install.
+**Unraid**: search **Poptonium** in Apps.
 
 **Docker**:
 
 ```bash
 docker run -d --name poptonium --restart unless-stopped \
   -p 8085:8085 \
-  -v /path/to/appdata/poptonium:/data \
+  -v /path/to/appdata:/data \
   ghcr.io/benjafin/poptonium:latest
 ```
 
-**Compose**: `docker compose up -d` with the included [`docker-compose.yml`](docker-compose.yml). It builds from source.
+Keep the host port at **8085**: on your LAN, the app looks for the server there on the Plex host.
 
 ## Set up
 
-Open `http://<host>:8085/admin`, create the admin account, and follow the setup wizard. It tests each connection as you go:
+Open `http://<host>:8085/admin`, create an account, and follow the wizard.
 
-| Integration | Enables | You need |
+| Integration | Enables | Needs |
 |---|---|---|
-| **Plex** (required) | Everything | Server URL (e.g. `http://plex:32400`) and token |
-| MDbList | Ratings, popular feed | [mdblist.com](https://mdblist.com) API key |
-| Overseerr | Search and requests | URL and API key |
-| OpenSubtitles | Subtitle search and download | App API key (Profile > API Consumers) plus an account; its quota (20/day free) is used |
+| **Plex** | Required | URL and token |
+| MDbList | Ratings, popular feed | API key |
+| Overseerr | Requests | URL and API key |
+| OpenSubtitles | Subtitles | API key and account |
 
-Next, choose starter sections based on your libraries, or start from a blank board. You can change everything later under **Integrations**, **Ratings** and **Sections**.
+Skip any optional one to turn that feature off.
 
 ## Optional
 
-### Reverse proxy (access outside your LAN)
+### Remote access
 
-The app discovers the server through your Plex connection, so you don't need a new domain. On your existing Plex proxy:
+Add two rules to your existing Plex reverse proxy:
 
-1. Route `/poptonium/` to `http://poptonium:8085`, keeping the full path (no rewrite).
-2. Restrict `/poptonium/admin` to your LAN. The app never calls it.
+1. Proxy `/poptonium/` to `poptonium:8085`, keeping the path.
+2. Limit `/poptonium/admin` to your LAN.
 
-SWAG/nginx: paste both blocks from [`swag/poptonium.subdomain.conf`](swag/poptonium.subdomain.conf) above the main `location /` block. `$lan-ip` exists only in SWAG. On other proxies, use their own access control instead: `allow`/`deny` in nginx, `remote_ip private_ranges` in Caddy, an `ipAllowList` middleware in Traefik.
+For SWAG, paste [`swag/poptonium.subdomain.conf`](swag/poptonium.subdomain.conf) into your Plex conf.
 
 ### Share links
 
-Under **Integrations > Share links**, set the Public URL (or `PUBLIC_URL`) to the server's public address, e.g. `https://plex.example.com/poptonium`. Leave it blank to hide the app's Share button. Share pages are public, so if your proxy geo-blocks or LAN-restricts requests, exempt `/poptonium/s/`.
+Set **Integrations > Share links** to your public URL, e.g. `https://plex.example.com/poptonium`. If your proxy blocks outside traffic, allow `/poptonium/s/`.
 
-### Fast Cast subtitles
+### Media mount (casting)
 
-A Chromecast can't read subtitle tracks embedded in a file, and having Plex extract them is slow. Mount your media **read-only at the same container paths Plex uses** and the server reads the tracks straight from the file: they arrive in under a second and ASS keeps its styling.
+Mount your media read-only at the **same paths Plex uses**:
 
 ```bash
-  -v /mnt/user/media/Movies:/movies:ro \
-  -v "/mnt/user/media/TV Shows:/tv:ro" \
+-v /mnt/media/Movies:/movies:ro
 ```
 
-If the paths can't match, set `SUBTITLE_PATH_MAP` to `plex path=container path` pairs separated by `;`, for example `/data/movies=/media/Movies;/data/tv=/media/TV Shows`. The dashboard's **Cast subtitles** tile shows which Plex folders are visible. Without the mount, subtitles still come through Plex.
-
-The same mount powers **sound on the phone** while casting: the picture plays muted on the TV and the app streams the audio track (stereo Opus, about 128 kbit/s, so it works remotely too) from `/cast/audio`, kept in sync with the TV. Without the mount the option doesn't appear.
+This enables instant, styled subtitles and phone audio while casting. If the paths differ, set `SUBTITLE_PATH_MAP=/plex/path=/container/path;...`.
 
 ### Environment variables
 
-The wizard is all you need. If you want to pre-fill a deploy, these variables seed `/data/config.json` **on first boot only**. After that, the admin UI is the source of truth.
+These pre-fill the wizard on first start:
 
-| Variable | Purpose |
-|---|---|
-| `PLEX_URL`, `PLEX_TOKEN` | Plex connection |
-| `MDBLIST_API_KEY` | Ratings and popular feed |
-| `OVERSEERR_URL`, `OVERSEERR_API_KEY` | Search and requests |
-| `OPENSUBTITLES_API_KEY`, `OPENSUBTITLES_USERNAME`, `OPENSUBTITLES_PASSWORD` | Subtitles |
-| `PUBLIC_URL` | Share links |
-| `SUBTITLE_PATH_MAP` | Cast subtitle path mapping (read on every start) |
-| `TZ` | Timezone for the nightly ratings sync (default 03:00) |
+`PLEX_URL` `PLEX_TOKEN` `MDBLIST_API_KEY` `OVERSEERR_URL` `OVERSEERR_API_KEY` `OPENSUBTITLES_API_KEY` `OPENSUBTITLES_USERNAME` `OPENSUBTITLES_PASSWORD` `PUBLIC_URL` `SUBTITLE_PATH_MAP` `TZ`
 
 ## License
 
